@@ -1,7 +1,7 @@
 // Service worker do Kids TV Segura
-// Guarda os arquivos no aparelho para o app abrir rápido e funcionar sem internet.
+// Guarda os arquivos no aparelho para o app abrir sem internet.
 // Ao publicar uma nova versão, troque o número abaixo para o celular baixar a atualização.
-const CACHE = 'kidstv-v2';
+const CACHE = 'kidstv-v3';
 
 // Só estes endereços externos ficam guardados no aparelho.
 // YouTube (player, vídeos, miniaturas) sempre vai direto para a internet.
@@ -18,7 +18,12 @@ const CORE = [
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(CORE)));
+  // cache: 'reload' ignora o cache do navegador e baixa a versão publicada agora
+  event.waitUntil(
+    caches.open(CACHE).then((cache) =>
+      cache.addAll(CORE.map((url) => new Request(url, { cache: 'reload' })))
+    )
+  );
   self.skipWaiting();
 });
 
@@ -31,17 +36,36 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Estratégia: usa a cópia guardada na hora e, em paralelo, busca a versão nova
-// da internet para a próxima abertura. Vale também para Tailwind e Google Fonts.
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
   const sameOrigin = url.origin === self.location.origin;
   if (!sameOrigin && !CACHEABLE_HOSTS.includes(url.hostname)) return;
 
+  if (sameOrigin) {
+    // Arquivos do app: tenta a internet primeiro (sempre a versão mais nova);
+    // sem internet, usa a cópia guardada.
+    event.respondWith(
+      fetch(event.request, { cache: 'no-cache' })
+        .then((response) => {
+          if (response && response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE).then((cache) => cache.put(event.request, copy));
+          }
+          return response;
+        })
+        .catch(() =>
+          caches.match(event.request, { ignoreSearch: true })
+            .then((cached) => cached || caches.match('./index.html'))
+        )
+    );
+    return;
+  }
+
+  // Tailwind e fontes (versões fixas): usa a cópia guardada e atualiza em segundo plano
   event.respondWith(
     caches.open(CACHE).then(async (cache) => {
-      const cached = await cache.match(event.request, { ignoreSearch: true });
+      const cached = await cache.match(event.request);
       const network = fetch(event.request)
         .then((response) => {
           if (response && (response.ok || response.type === 'opaque')) {
