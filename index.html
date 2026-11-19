@@ -15,30 +15,15 @@
   <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
 
-  <!-- Tailwind CSS via CDN (versão fixa; fica guardado no aparelho pelo service worker) -->
-  <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+  <!-- Estilos prontos (gerados a partir do Tailwind 3.4.16). Antes o Tailwind montava
+       o CSS em tempo real no celular, o que deixava o toque lento.
+       Configuração usada na geração: hoverOnlyWhenSupported, fontes Fredoka/Nunito
+       e sombras kid / kid-lg / nav. -->
+  <link rel="stylesheet" href="styles.css">
   <!-- Google Fonts: Fredoka para títulos amigáveis e Nunito para alta legibilidade -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
-
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            display: ['Fredoka', 'sans-serif'],
-            body: ['Nunito', 'sans-serif'],
-          },
-          boxShadow: {
-            'kid': '0 6px 0 rgba(15, 23, 42, 0.12)',
-            'kid-lg': '0 10px 20px -5px rgba(15, 23, 42, 0.15), 0 6px 0 rgba(15, 23, 42, 0.12)',
-            'nav': '0 -6px 24px rgba(15, 23, 42, 0.08)',
-          }
-        }
-      }
-    }
-  </script>
 
   <style>
     /* Estilos base e animações lúdicas */
@@ -49,7 +34,14 @@
       background-size: 24px 24px;
       -webkit-tap-highlight-color: transparent;
       user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;   /* sem menu de "segurar" nas imagens */
     }
+
+    /* Toque imediato: sem espera de duplo toque para zoom */
+    button, a, [onclick], summary { touch-action: manipulation; cursor: pointer; }
+    input, select, textarea { -webkit-user-select: text; user-select: text; }
+    img { -webkit-user-drag: none; }
 
     h1, h2, h3, .font-kid {
       font-family: 'Fredoka', sans-serif;
@@ -123,7 +115,7 @@
   <!-- ===================================================================== -->
   <!-- CABEÇALHO SUPERIOR (HEADER)                                           -->
   <!-- ===================================================================== -->
-  <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b-2 border-amber-100 shadow-sm">
+  <header class="sticky top-0 z-30 bg-white border-b-2 border-amber-100 shadow-sm">
     <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
       <!-- Logo e Nome do App -->
       <button onclick="switchTab('inicio'); clearCategoryFilter();" class="flex items-center gap-2.5 text-left group focus:outline-none">
@@ -149,7 +141,7 @@
         <div id="discovery-badge" onclick="showDiscoveryInfo()" role="button" tabindex="0"
              class="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border-2 border-emerald-200 text-emerald-700 text-xs font-extrabold shadow-sm hover:bg-emerald-100 transition-colors">
           <span class="relative flex h-2.5 w-2.5">
-            <span id="discovery-ping" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span id="discovery-ping" class="hidden absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
             <span id="discovery-dot" class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
           </span>
           <span class="hidden sm:inline">Modo Descoberta</span>
@@ -176,67 +168,15 @@
   <main class="flex-1 max-w-5xl w-full mx-auto px-4 pt-5">
 
     <!-- =================================================================== -->
-    <!-- TELA 1: INÍCIO (4 BLOCOS + NOVOS E RECOMENDADOS + FEED EQUILIBRADO) -->
+    <!-- TELA 1: INÍCIO - FEED NO ESTILO YOUTUBE                             -->
+    <!-- Faixa de categorias + prateleiras deslizantes por categoria          -->
     <!-- =================================================================== -->
     <section id="view-inicio" class="space-y-6">
+      <!-- Faixa de categorias (Todos + 4 pilares) -->
+      <div id="category-chips" class="-mx-4 px-4 flex gap-2 overflow-x-auto no-scrollbar py-1"></div>
 
-      <!-- Grade dos 4 Pilares Principais (Blocos Grandes e Coloridos) -->
-      <div>
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="font-kid text-lg sm:text-xl font-bold text-slate-700 flex items-center gap-2">
-            <span>Escolha uma Aventura</span>
-          </h2>
-          <button id="btn-show-all" onclick="clearCategoryFilter()"
-                  class="hidden btn-tactile px-4 py-1.5 rounded-full bg-slate-800 text-white font-kid text-sm font-semibold shadow-kid flex items-center gap-1.5">
-            <span>✕</span> Mostrar Todos
-          </button>
-        </div>
-
-        <div id="category-blocks-grid" class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <!-- Renderizado dinamicamente via JS para manter sincronia com o estado -->
-        </div>
-      </div>
-
-      <!-- Faixa Especial: Novos e Recomendados (Garante variedade de TODOS os canais) -->
-      <div id="discovery-strip-section" class="bg-white rounded-3xl p-4 sm:p-5 border-2 border-sky-100 shadow-sm">
-        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
-          <div class="flex items-center gap-2">
-            <span class="text-2xl">✨</span>
-            <div>
-              <h2 class="font-kid text-lg sm:text-xl font-bold text-slate-800 leading-tight">
-                Novos e Recomendados
-              </h2>
-              <p class="text-xs font-bold text-slate-500">
-                Todos os canais aprovados têm vez aqui!
-              </p>
-            </div>
-          </div>
-          <span class="text-xs font-extrabold px-3 py-1 rounded-full bg-sky-100 text-sky-700">
-            Rotação Justa Ativa
-          </span>
-        </div>
-
-        <!-- Carrossel horizontal com 1 vídeo de destaque de cada canal ativo -->
-        <div id="discovery-carousel" class="flex gap-3.5 overflow-x-auto no-scrollbar pb-2 pt-1">
-          <!-- Cards gerados via JS -->
-        </div>
-      </div>
-
-      <!-- Feed Principal de Vídeos Curados -->
-      <div>
-        <div class="flex items-center justify-between mb-3">
-          <h2 id="feed-section-title" class="font-kid text-lg sm:text-xl font-bold text-slate-800 flex items-center gap-2">
-            <span>🎬 Vídeos para Assistir</span>
-          </h2>
-          <span id="feed-count-badge" class="text-xs font-extrabold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
-            0 vídeos
-          </span>
-        </div>
-
-        <div id="main-video-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-          <!-- Cards de vídeos gerados via JS -->
-        </div>
-      </div>
+      <!-- Feed: prateleiras (Todos) ou grade de uma categoria -->
+      <div id="home-feed" class="space-y-7"></div>
     </section>
 
     <!-- =================================================================== -->
@@ -271,7 +211,7 @@
             ← Voltar aos canais
           </button>
         </div>
-        <div id="selected-channel-videos-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        <div id="selected-channel-videos-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-6"></div>
       </div>
     </section>
 
@@ -291,7 +231,7 @@
         <div class="text-4xl sm:text-5xl animate-float">⭐</div>
       </div>
 
-      <div id="favorites-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+      <div id="favorites-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-6">
         <!-- Renderizado via JS -->
       </div>
     </section>
@@ -501,7 +441,7 @@
   <!-- ===================================================================== -->
   <!-- BARRA DE NAVEGAÇÃO INFERIOR (BOTÕES GRANDES PARA MÃOS PEQUENAS)        -->
   <!-- ===================================================================== -->
-  <nav class="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t-2 border-slate-200 shadow-nav">
+  <nav class="fixed bottom-0 inset-x-0 z-40 bg-white border-t-2 border-slate-200 shadow-nav">
     <div class="max-w-3xl mx-auto px-2 py-2 grid grid-cols-4 gap-1.5 sm:gap-3">
       <!-- Botão Início -->
       <button onclick="switchTab('inicio')" data-tab="inicio"
@@ -537,7 +477,7 @@
   <!-- ===================================================================== -->
   <!-- MODAL PLAYER LIVRE DE DISTRAÇÕES (100% SEGURO PARA A CRIANÇA)         -->
   <!-- ===================================================================== -->
-  <div id="video-player-modal" class="fixed inset-0 z-50 hidden bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-6">
+  <div id="video-player-modal" class="fixed inset-0 z-50 hidden bg-slate-950/95 flex items-center justify-center p-3 sm:p-6">
     <div class="bg-white w-full max-w-3xl rounded-3xl overflow-hidden shadow-2xl border-4 border-sky-400 flex flex-col">
 
       <!-- Barra Superior do Player -->
@@ -594,7 +534,7 @@
         </div>
 
         <!-- Overlay de Fim de Vídeo -->
-        <div id="player-ended-overlay" class="hidden absolute inset-0 bg-slate-900/85 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-white">
+        <div id="player-ended-overlay" class="hidden absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center p-6 text-white">
           <div class="text-6xl mb-2">🎉</div>
           <h4 class="font-kid text-2xl sm:text-3xl font-bold mb-1">Muito bem! Vídeo concluído!</h4>
           <p class="text-sm text-slate-300 font-semibold mb-5 max-w-md">
@@ -743,6 +683,7 @@
     const appState = {
       activeTab: 'inicio',
       selectedCategory: null,      // null = todos os 4 blocos
+      gridLimit: 24,               // quantos vídeos mostrar na grade de uma categoria
       selectedChannelId: null,     // filtro na aba Canais
       fairRotationEnabled: true,   // evita bolha de um único canal
       parentUnlocked: false,
@@ -943,7 +884,7 @@
     // Miniatura do vídeo: foto do YouTube ou ilustração (vídeos de exemplo)
     function videoThumbHTML(video, emojiSize) {
       if (video.youtubeId) {
-        return `<img src="${youTubeThumb(video.youtubeId)}" alt="" loading="lazy" referrerpolicy="no-referrer"
+        return `<img src="${youTubeThumb(video.youtubeId)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"
                      class="absolute inset-0 w-full h-full object-cover">`;
       }
       return `<span class="${emojiSize} drop-shadow-md group-hover:scale-110 transition-transform duration-300">${video.emoji}</span>`;
@@ -989,11 +930,17 @@
     // -----------------------------------------------------------------------
     // 3. FEEDBACK SONORO SUAVE (WEB AUDIO API - SEM ARQUIVOS EXTERNOS)
     // -----------------------------------------------------------------------
+    // Um único "aparelho de som" para o app inteiro. Criar um novo a cada toque
+    // deixava o celular lento e, depois de vários toques, o som parava.
+    let sharedAudioCtx = null;
+
     function playGentleChime(type = 'tap') {
       try {
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
         if (!AudioCtx) return;
-        const ctx = new AudioCtx();
+        if (!sharedAudioCtx) sharedAudioCtx = new AudioCtx();
+        const ctx = sharedAudioCtx;
+        if (ctx.state === 'suspended') ctx.resume();
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.connect(gain);
@@ -1141,161 +1088,121 @@
     // -----------------------------------------------------------------------
     // 6. RENDERIZAÇÃO DAS TELAS E COMPONENTES
     // -----------------------------------------------------------------------
-    function renderCategoryBlocks() {
-      const grid = document.getElementById('category-blocks-grid');
-      const btnShowAll = document.getElementById('btn-show-all');
+    const SHELF_SIZE = 12;      // vídeos por prateleira na tela inicial
+    const GRID_PAGE = 24;       // vídeos por "página" na grade de uma categoria
 
-      if (appState.selectedCategory) {
-        btnShowAll.classList.remove('hidden');
-      } else {
-        btnShowAll.classList.add('hidden');
-      }
-
-      grid.innerHTML = Object.values(CATEGORIES).map(cat => {
-        const isSelected = appState.selectedCategory === cat.id;
-        const isDimmed = appState.selectedCategory && !isSelected;
-
+    // Faixa de categorias no topo (estilo YouTube)
+    function renderCategoryChips() {
+      const chips = [{ id: null, icon: '🏠', title: 'Todos' }, ...Object.values(CATEGORIES)];
+      document.getElementById('category-chips').innerHTML = chips.map(c => {
+        const selected = appState.selectedCategory === c.id;
         return `
-          <button onclick="selectCategory('${cat.id}')"
-                  class="btn-tactile relative overflow-hidden rounded-3xl p-4 sm:p-5 text-left text-white bg-gradient-to-br ${cat.gradient} border-b-4 ${cat.border} shadow-kid flex flex-col justify-between min-h-[138px] sm:min-h-[156px] transition-all ${isSelected ? 'ring-4 ring-slate-900 scale-[1.02]' : ''} ${isDimmed ? 'opacity-65 hover:opacity-100' : ''}">
-            <div class="flex items-start justify-between gap-2">
-              <div class="animate-float">${cat.svgArt}</div>
-              ${isSelected ? '<span class="bg-white text-slate-900 text-[11px] font-extrabold px-2.5 py-0.5 rounded-full shadow">Ativo ✓</span>' : ''}
-            </div>
-            <div class="mt-2">
-              <h3 class="font-kid text-lg sm:text-xl font-bold leading-tight drop-shadow-sm">${cat.title}</h3>
-              <p class="text-xs font-bold text-white/90 mt-0.5">${cat.subtitle}</p>
-            </div>
-          </button>
-        `;
+          <button onclick="${c.id ? `selectCategory('${c.id}')` : 'clearCategoryFilter()'}"
+                  class="shrink-0 h-11 px-4 rounded-full font-kid font-bold text-sm flex items-center gap-1.5 border-2 transition-colors
+                         ${selected ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-200 text-slate-700 active:bg-slate-100'}">
+            <span>${c.icon}</span><span class="whitespace-nowrap">${c.title}</span>
+          </button>`;
       }).join('');
     }
 
-    function renderDiscoveryCarousel() {
-      const container = document.getElementById('discovery-carousel');
-      const items = getDiscoveryVideosPerChannel();
-
-      if (items.length === 0) {
-        container.innerHTML = `<p class="text-sm font-bold text-slate-400 py-3">Nenhum canal ativo no momento. Ative canais na aba Pais.</p>`;
-        return;
-      }
-
-      container.innerHTML = items.map(({ video, channel }) => {
-        const cat = CATEGORIES[video.category];
-        return `
-          <div onclick="openVideoPlayer('${video.id}')"
-               class="btn-tactile cursor-pointer shrink-0 w-56 sm:w-64 rounded-2xl bg-slate-50 border-2 border-slate-200 hover:border-sky-400 overflow-hidden shadow-sm flex flex-col">
-            <div class="relative h-28 bg-gradient-to-br ${video.bgGradient} flex items-center justify-center overflow-hidden">
-              ${videoThumbHTML(video, 'text-5xl')}
-              <span class="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-white/90 text-slate-800 text-[10px] font-extrabold">
-                ${channel.watchCount === 0 ? '🆕 Novo Canal!' : cat.icon + ' ' + cat.title}
-              </span>
-              <div class="absolute inset-0 bg-black/10 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                <span class="w-10 h-10 rounded-full bg-white text-slate-900 flex items-center justify-center text-lg shadow-md">▶</span>
-              </div>
-            </div>
-            <div class="p-3 flex-1 flex flex-col justify-between">
-              <p class="font-kid font-bold text-sm text-slate-800 line-clamp-2 leading-snug">${esc(video.title)}</p>
-              <div class="flex items-center gap-1.5 mt-2 pt-1.5 border-t border-slate-200/70">
-                <span class="text-sm">${channel.avatar}</span>
-                <span class="text-xs font-extrabold text-slate-600 truncate">${esc(channel.name)}</span>
-              </div>
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    function createVideoCardHTML(video) {
+    // Card de vídeo no estilo YouTube: miniatura grande, avatar do canal, título e canal
+    function createVideoCardHTML(video, inShelf = false) {
       const channel = appState.channels.find(c => c.id === video.channelId) || { name: 'Canal Aprovado', avatar: '📺' };
-      const cat = CATEGORIES[video.category];
       const isFav = appState.favorites.includes(video.id);
 
       return `
-        <article class="bg-white rounded-3xl border-2 border-slate-200/90 overflow-hidden shadow-kid hover:border-sky-300 transition-all flex flex-col">
-          <!-- Thumbnail Ilustrada Clicável -->
-          <div onclick="openVideoPlayer('${video.id}')" class="relative aspect-video bg-gradient-to-br ${video.bgGradient} cursor-pointer group flex items-center justify-center overflow-hidden">
-            <!-- Detalhes decorativos -->
-            <div class="absolute -bottom-4 -left-4 w-24 h-24 rounded-full bg-white/10"></div>
-            <div class="absolute -top-4 -right-4 w-20 h-20 rounded-full bg-white/10"></div>
-
-            ${videoThumbHTML(video, 'text-6xl sm:text-7xl')}
-
-            <!-- Tag da Categoria -->
-            <span class="absolute top-3 left-3 px-3 py-1 rounded-full ${cat.badgeBg} text-xs font-extrabold shadow-sm">
-              ${cat.icon} ${cat.title}
-            </span>
-
-            <!-- Duração -->
+        <article class="${inShelf ? 'shrink-0 w-64 sm:w-72 snap-start' : 'w-full'} flex flex-col">
+          <div onclick="openVideoPlayer('${video.id}')"
+               class="relative aspect-video rounded-2xl overflow-hidden bg-gradient-to-br ${video.bgGradient} flex items-center justify-center cursor-pointer active:opacity-80 shadow-sm">
+            ${videoThumbHTML(video, inShelf ? 'text-5xl' : 'text-6xl')}
             ${video.duration ? `
-            <span class="absolute bottom-3 right-3 px-2.5 py-0.5 rounded-lg bg-slate-900/75 text-white text-xs font-extrabold">
-              ${esc(video.duration)}
-            </span>` : ''}
-
-            <!-- Botão Play Central -->
-            <div class="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-black/20 transition-colors">
-              <div class="w-14 h-14 rounded-full bg-white/95 text-sky-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform pl-1">
-                <svg class="w-7 h-7 fill-current" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-              </div>
-            </div>
+            <span class="absolute bottom-2 right-2 px-1.5 py-0.5 rounded-md bg-slate-900/85 text-white text-xs font-extrabold">${esc(video.duration)}</span>` : ''}
           </div>
-
-          <!-- Informações do Vídeo e Canal -->
-          <div class="p-4 flex-1 flex flex-col justify-between gap-3">
-            <h3 onclick="openVideoPlayer('${video.id}')" class="cursor-pointer font-kid text-base sm:text-lg font-bold text-slate-800 hover:text-sky-600 leading-snug line-clamp-3">
-              ${esc(video.title)}
-            </h3>
-
-            <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
-              <div class="flex items-center gap-2 min-w-0">
-                <span class="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-base shrink-0">
-                  ${channel.avatar}
-                </span>
-                <span class="text-xs font-extrabold text-slate-600 truncate">${esc(channel.name)}</span>
-              </div>
-
-              <!-- Botão Favoritar Grande -->
-              <button onclick="toggleFavorite('${video.id}')" aria-label="Favoritar vídeo"
-                      class="btn-tactile w-11 h-11 rounded-2xl ${isFav ? 'bg-rose-100 border-2 border-rose-300 text-rose-600' : 'bg-slate-100 hover:bg-rose-50 text-slate-400'} flex items-center justify-center text-xl shrink-0 transition-colors">
-                ${isFav ? '❤️' : '🤍'}
-              </button>
+          <div class="flex gap-2.5 pt-2.5">
+            <span class="w-9 h-9 rounded-full bg-white border border-slate-200 flex items-center justify-center text-lg shrink-0">${channel.avatar}</span>
+            <div class="min-w-0 flex-1" onclick="openVideoPlayer('${video.id}')">
+              <h3 class="font-kid text-[15px] font-bold text-slate-800 leading-snug line-clamp-2 cursor-pointer">${esc(video.title)}</h3>
+              <p class="text-xs font-bold text-slate-500 truncate mt-0.5">${esc(channel.name)}</p>
             </div>
+            <button onclick="toggleFavorite('${video.id}')" aria-label="Favoritar vídeo"
+                    class="w-11 h-11 -mt-1 -mr-1 rounded-full flex items-center justify-center text-xl shrink-0 active:bg-rose-100 ${isFav ? '' : 'opacity-70'}">
+              ${isFav ? '❤️' : '🤍'}
+            </button>
           </div>
         </article>
       `;
     }
 
-    function renderMainFeed() {
-      const grid = document.getElementById('main-video-grid');
-      const titleEl = document.getElementById('feed-section-title');
-      const countBadge = document.getElementById('feed-count-badge');
-      const discoverySection = document.getElementById('discovery-strip-section');
+    function shelfHTML(title, videos, seeAllCategory) {
+      return `
+        <section>
+          <div class="flex items-center justify-between mb-2.5">
+            <h2 class="font-kid text-lg sm:text-xl font-bold text-slate-800">${title}</h2>
+            ${seeAllCategory ? `
+            <button onclick="selectCategory('${seeAllCategory}')"
+                    class="h-10 px-3 -mr-2 rounded-full text-sm font-extrabold text-sky-700 active:bg-sky-100">Ver tudo ›</button>` : ''}
+          </div>
+          <div class="-mx-4 px-4 flex gap-3.5 overflow-x-auto no-scrollbar snap-x snap-mandatory scroll-px-4 pb-1">
+            ${videos.map(v => createVideoCardHTML(v, true)).join('')}
+          </div>
+        </section>`;
+    }
 
-      const videos = getBalancedVideos(appState.selectedCategory);
+    function emptyFeedHTML() {
+      return `
+        <div class="bg-white rounded-3xl p-8 text-center border-2 border-dashed border-slate-300">
+          <div class="text-5xl mb-2">📺</div>
+          <p class="font-kid text-xl font-bold text-slate-700">Nenhum vídeo por aqui ainda</p>
+          <p class="text-sm font-semibold text-slate-500 mt-1">Peça para o papai ou a mamãe aprovar vídeos na aba Pais.</p>
+        </div>`;
+    }
+
+    // Tela inicial: prateleiras por categoria, ou grade de uma categoria escolhida
+    function renderHomeFeed() {
+      renderCategoryChips();
+      const feed = document.getElementById('home-feed');
 
       if (appState.selectedCategory) {
         const cat = CATEGORIES[appState.selectedCategory];
-        titleEl.innerHTML = `<span>${cat.icon} Vídeos de ${cat.title}</span>`;
-        discoverySection.classList.add('hidden');
-      } else {
-        titleEl.innerHTML = `<span>🎬 Todos os Vídeos Curados</span>`;
-        discoverySection.classList.remove('hidden');
-      }
-
-      countBadge.textContent = `${videos.length} ${videos.length === 1 ? 'vídeo' : 'vídeos'}`;
-
-      if (videos.length === 0) {
-        grid.innerHTML = `
-          <div class="col-span-full bg-white rounded-3xl p-8 text-center border-2 border-dashed border-slate-300">
-            <div class="text-5xl mb-2">📺</div>
-            <p class="font-kid text-xl font-bold text-slate-700">Nenhum vídeo disponível neste filtro</p>
-            <p class="text-sm font-semibold text-slate-500 mt-1">Peça para o papai ou a mamãe ativar canais nesta categoria.</p>
-          </div>
-        `;
+        const videos = getBalancedVideos(cat.id);
+        const shown = videos.slice(0, appState.gridLimit);
+        feed.innerHTML = videos.length === 0 ? emptyFeedHTML() : `
+          <section>
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="font-kid text-xl font-bold text-slate-800">${cat.icon} ${cat.title}</h2>
+              <span class="text-xs font-extrabold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
+                ${videos.length} ${videos.length === 1 ? 'vídeo' : 'vídeos'}
+              </span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-6">
+              ${shown.map(v => createVideoCardHTML(v)).join('')}
+            </div>
+            ${videos.length > shown.length ? `
+            <button onclick="showMoreVideos()"
+                    class="mt-6 w-full h-12 rounded-2xl bg-white border-2 border-slate-200 font-kid font-bold text-slate-700 active:bg-slate-100">
+              Mostrar mais vídeos
+            </button>` : ''}
+          </section>`;
         return;
       }
 
-      grid.innerHTML = videos.map(createVideoCardHTML).join('');
+      const shelves = [];
+      // Novidades: 1 vídeo de cada canal ativo (os menos assistidos primeiro)
+      const highlights = getDiscoveryVideosPerChannel().map(p => p.video).slice(0, SHELF_SIZE);
+      if (highlights.length > 1) shelves.push(shelfHTML('✨ Novidades', highlights, null));
+
+      Object.values(CATEGORIES).forEach(cat => {
+        const videos = getBalancedVideos(cat.id).slice(0, SHELF_SIZE);
+        if (videos.length) shelves.push(shelfHTML(`${cat.icon} ${cat.title}`, videos, cat.id));
+      });
+
+      feed.innerHTML = shelves.length ? shelves.join('') : emptyFeedHTML();
+    }
+
+    function showMoreVideos() {
+      playGentleChime('tap');
+      appState.gridLimit += GRID_PAGE;
+      renderHomeFeed();
     }
 
     function renderChannelsView() {
@@ -1312,7 +1219,7 @@
         const chVideos = appState.videos.filter(v => v.channelId === appState.selectedChannelId);
         if (!channel) { appState.selectedChannelId = null; return renderChannelsView(); }
         document.getElementById('selected-channel-title').textContent = `${channel.avatar} Vídeos de ${channel.name}`;
-        document.getElementById('selected-channel-videos-grid').innerHTML = chVideos.map(createVideoCardHTML).join('');
+        document.getElementById('selected-channel-videos-grid').innerHTML = chVideos.map(v => createVideoCardHTML(v)).join('');
         return;
       }
 
@@ -1364,17 +1271,7 @@
 
     function renderFavoritesView() {
       const grid = document.getElementById('favorites-grid');
-      const navBadge = document.getElementById('nav-fav-count');
-
-      const activeChannelIds = new Set(getActiveChannels().map(c => c.id));
-      const favVideos = appState.videos.filter(v => appState.favorites.includes(v.id) && activeChannelIds.has(v.channelId));
-
-      if (favVideos.length > 0) {
-        navBadge.textContent = favVideos.length;
-        navBadge.classList.remove('hidden');
-      } else {
-        navBadge.classList.add('hidden');
-      }
+      const favVideos = getVisibleFavorites();
 
       if (favVideos.length === 0) {
         grid.innerHTML = `
@@ -1390,7 +1287,7 @@
         return;
       }
 
-      grid.innerHTML = favVideos.map(createVideoCardHTML).join('');
+      grid.innerHTML = favVideos.map(v => createVideoCardHTML(v)).join('');
     }
 
     function renderParentDashboard() {
@@ -1508,14 +1405,30 @@
       }
     }
 
+    function getVisibleFavorites() {
+      const activeChannelIds = new Set(getActiveChannels().map(c => c.id));
+      return appState.videos.filter(v => appState.favorites.includes(v.id) && activeChannelIds.has(v.channelId));
+    }
+
+    function updateFavBadge() {
+      const navBadge = document.getElementById('nav-fav-count');
+      const count = getVisibleFavorites().length;
+      navBadge.textContent = count;
+      navBadge.classList.toggle('hidden', count === 0);
+    }
+
+    // Redesenha só a tela que está aberta (as outras são desenhadas ao trocar de aba).
+    // Isso deixa o toque bem mais rápido no celular quando há muitos vídeos.
     function renderAll() {
       updateHeaderDiscoveryBadge();
-      renderCategoryBlocks();
-      renderDiscoveryCarousel();
-      renderMainFeed();
-      renderChannelsView();
-      renderFavoritesView();
-      renderParentDashboard();
+      updateFavBadge();
+      const views = {
+        inicio: renderHomeFeed,
+        canais: renderChannelsView,
+        favoritos: renderFavoritesView,
+        pais: renderParentDashboard
+      };
+      (views[appState.activeTab] || renderHomeFeed)();
     }
 
     // -----------------------------------------------------------------------
@@ -1547,26 +1460,23 @@
         }
       });
 
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0 });
       renderAll();
     }
 
     function selectCategory(categoryId) {
       playGentleChime('tap');
-      if (appState.selectedCategory === categoryId) {
-        appState.selectedCategory = null;
-      } else {
-        appState.selectedCategory = categoryId;
-      }
-      renderCategoryBlocks();
-      renderMainFeed();
+      appState.selectedCategory = appState.selectedCategory === categoryId ? null : categoryId;
+      appState.gridLimit = GRID_PAGE;
+      renderHomeFeed();
+      window.scrollTo({ top: 0 });
     }
 
     function clearCategoryFilter() {
       playGentleChime('tap');
       appState.selectedCategory = null;
-      renderCategoryBlocks();
-      renderMainFeed();
+      appState.gridLimit = GRID_PAGE;
+      renderHomeFeed();
     }
 
     function selectChannel(channelId) {
@@ -2300,7 +2210,8 @@
 
       document.getElementById('video-player-modal').classList.remove('hidden');
       startPlayerTimer();
-      renderAll(); // Atualiza contadores e rotação em segundo plano
+      // Não redesenha a tela de trás aqui: abrir o vídeo precisa ser instantâneo.
+      // A ordem da rotação justa é atualizada na próxima troca de aba.
     }
 
     function startPlayerTimer() {

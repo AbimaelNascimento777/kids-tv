@@ -1,7 +1,7 @@
 // Service worker do Kids TV Segura
 // Guarda os arquivos no aparelho para o app abrir sem internet.
 // Ao publicar uma nova versão, troque o número abaixo para o celular baixar a atualização.
-const CACHE = 'kidstv-v4';
+const CACHE = 'kidstv-v5';
 
 // Só estes endereços externos ficam guardados no aparelho.
 // YouTube (player, vídeos, miniaturas) sempre vai direto para a internet.
@@ -10,6 +10,7 @@ const CACHEABLE_HOSTS = ['cdn.tailwindcss.com', 'fonts.googleapis.com', 'fonts.g
 const CORE = [
   './',
   './index.html',
+  './styles.css',
   './manifest.webmanifest',
   './icons/icon.svg',
   './icons/icon-192.png',
@@ -62,7 +63,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Tailwind e fontes (versões fixas): usa a cópia guardada e atualiza em segundo plano
+  // Fontes do Google (versões fixas): usa a cópia guardada e atualiza em segundo plano
   event.respondWith(
     caches.open(CACHE).then(async (cache) => {
       const cached = await cache.match(event.request);

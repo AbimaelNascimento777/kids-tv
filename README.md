@@ -8,6 +8,7 @@ instalado na tela inicial do celular.
 | Arquivo | Para que serve |
 |---|---|
 | `index.html` | O app inteiro (telas, regras e lógica) |
+| `styles.css` | Estilos prontos, gerados a partir do Tailwind. Ao criar telas novas, gere de novo (peça ao Claude) |
 | `manifest.webmanifest` | Nome, ícone e cores quando o app é instalado no celular |
 | `sw.js` | Guarda os arquivos no aparelho para abrir rápido e sem internet |
 | `icons/` | Ícones do app (SVG e PNG) |
