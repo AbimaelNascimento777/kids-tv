@@ -43,10 +43,36 @@ Faça isso antes de entregar o celular para a criança.
 3. No GitHub, **Add file → Upload files** com os arquivos alterados → **Commit changes**.
 4. No celular, feche e abra o app duas vezes para pegar a versão nova.
 
+## Como adicionar vídeos do YouTube
+
+1. No YouTube, abra o vídeo → **Compartilhar** → **Copiar link**.
+2. No app, aba **Pais** → digite o PIN → card **Aprovar Vídeo do YouTube**.
+3. Cole o link, escolha o pilar (só vale se o canal ainda não existir no app) → **Adicionar Vídeo**.
+   O título e o nome do canal vêm sozinhos.
+4. Para tirar os vídeos que vieram de exemplo: **Segurança e Dados → Remover vídeos de exemplo**.
+
+Cada canal na lista dos pais tem a opção de pausar, remover o canal inteiro ou remover vídeos um a um.
+
+### Como o player protege a criança
+
+- O vídeo toca pelo player oficial do YouTube em modo sem cookies (`youtube-nocookie.com`),
+  sem os controles do YouTube.
+- Uma camada do app cobre o vídeo inteiro: a criança só toca nos botões do app e não consegue
+  abrir o canal, o logo, links ou as sugestões do YouTube.
+- Quando o vídeo acaba, aparece a tela "Muito bem!" por cima das sugestões do YouTube.
+- Se o app for para segundo plano, o vídeo pausa.
+
+### Limitações
+
+- **Anúncios:** o YouTube pode mostrar anúncios em alguns vídeos, mesmo dentro do app.
+  Isso depende do dono do vídeo e não dá para bloquear. Vídeos marcados como "para crianças" têm regras de anúncio mais restritas.
+- **Alguns vídeos não abrem fora do YouTube** (o dono desativou a incorporação). O app avisa na hora de adicionar.
+- **Precisa de internet** para assistir. Sem internet, o app abre, mas os vídeos não tocam.
+- **Tela cheia:** funciona no Android. No iPhone, o Safari não permite tela cheia neste tipo de player; o botão some.
+
 ## Bom saber
 
 - Canais, favoritos, PIN e configurações ficam salvos **só no aparelho** onde foram feitos.
   Limpar os dados do navegador apaga tudo.
 - O site é público: quem tiver o link consegue abrir. Não coloque nome, fotos ou dados da criança.
 - O PIN protege contra a criança, não contra alguém que saiba mexer em código.
-- Os vídeos ainda são **simulados**. O próximo passo é ligar o player real do YouTube.

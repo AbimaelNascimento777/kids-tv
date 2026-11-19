@@ -92,6 +92,17 @@
       animation: shake 0.35s ease-in-out;
     }
 
+    /* Player do YouTube: ocupa a área toda e não recebe toques (o escudo do app controla tudo) */
+    #player-yt-layer iframe {
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      border: 0;
+    }
+    /* Em tela cheia o palco ocupa a tela toda, com fundo preto */
+    #player-stage:fullscreen { aspect-ratio: auto; padding: 0; background: #000; }
+    #player-stage:-webkit-full-screen { padding: 0; background: #000; }
+
     /* Ocultar barra de rolagem horizontal mantendo funcionalidade */
     .no-scrollbar::-webkit-scrollbar {
       display: none;
@@ -373,19 +384,22 @@
           </div>
         </div>
 
-        <!-- Card 2: Adicionar Novo Canal Aprovado -->
+        <!-- Card 2: Adicionar Vídeo do YouTube -->
         <div class="bg-white rounded-3xl p-5 border-2 border-sky-200 shadow-sm">
-          <h3 class="font-kid text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
-            <span>➕</span> Aprovar Novo Canal do YouTube
+          <h3 class="font-kid text-lg font-bold text-slate-800 mb-1 flex items-center gap-2">
+            <span>➕</span> Aprovar Vídeo do YouTube
           </h3>
-          <form onsubmit="handleAddChannel(event)" class="grid grid-cols-1 sm:grid-cols-12 gap-3">
+          <p class="text-xs sm:text-sm font-semibold text-slate-500 mb-3">
+            No YouTube, toque em Compartilhar → Copiar link e cole aqui. O título e o canal são preenchidos sozinhos.
+          </p>
+          <form onsubmit="handleAddVideo(event)" class="grid grid-cols-1 sm:grid-cols-12 gap-3">
             <div class="sm:col-span-5">
-              <label class="block text-xs font-extrabold text-slate-600 mb-1">Nome do Canal</label>
-              <input id="new-channel-name" type="text" required maxlength="40"placeholder="Ex: Mundo Bita, Turma da Bíblia..."
+              <label class="block text-xs font-extrabold text-slate-600 mb-1">Link do vídeo</label>
+              <input id="new-video-url" type="text" required inputmode="url" autocomplete="off" placeholder="https://youtu.be/..."
                      class="w-full px-4 py-3 rounded-2xl border-2 border-slate-200 focus:border-sky-500 focus:outline-none font-bold text-sm text-slate-800">
             </div>
             <div class="sm:col-span-4">
-              <label class="block text-xs font-extrabold text-slate-600 mb-1">Bloco / Pilar</label>
+              <label class="block text-xs font-extrabold text-slate-600 mb-1">Bloco / Pilar (se o canal for novo)</label>
               <select id="new-channel-category"
                       class="w-full px-4 py-3 rounded-2xl border-2 border-slate-200 focus:border-sky-500 focus:outline-none font-bold text-sm text-slate-800 bg-white">
                 <option value="entretenimento">🎨 Entretenimento</option>
@@ -395,9 +409,9 @@
               </select>
             </div>
             <div class="sm:col-span-3 flex items-end">
-              <button type="submit"
-                      class="w-full btn-tactile py-3 px-4 rounded-2xl bg-sky-600 hover:bg-sky-700 text-white font-kid font-bold text-sm shadow-kid">
-                Adicionar Canal
+              <button id="btn-add-video" type="submit"
+                      class="w-full btn-tactile py-3 px-4 rounded-2xl bg-sky-600 hover:bg-sky-700 text-white font-kid font-bold text-sm shadow-kid disabled:opacity-60">
+                Adicionar Vídeo
               </button>
             </div>
           </form>
@@ -414,6 +428,9 @@
           <div class="flex flex-wrap gap-2.5">
             <button onclick="startChangePin()" class="btn-tactile px-4 py-2.5 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-900 font-kid font-bold text-sm shadow-kid">
               Trocar PIN
+            </button>
+            <button id="btn-remove-demo" onclick="removeDemoContent()" class="btn-tactile px-4 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-kid font-bold text-sm shadow-kid">
+              Remover vídeos de exemplo
             </button>
             <button onclick="resetAppData()" class="btn-tactile px-4 py-2.5 rounded-2xl bg-rose-100 hover:bg-rose-200 text-rose-700 font-kid font-bold text-sm shadow-kid">
               Apagar dados e recomeçar
@@ -497,23 +514,41 @@
 
       <!-- Palco Simulado do Vídeo (Zero recomendações externas!) -->
       <div id="player-stage" class="playing-stage relative aspect-video w-full flex flex-col items-center justify-center p-6 text-center overflow-hidden bg-gradient-to-br from-sky-400 to-indigo-600">
-        <!-- Elementos decorativos de fundo -->
-        <div class="absolute inset-0 opacity-20 pointer-events-none flex items-center justify-around text-7xl">
-          <span>☁️</span><span>⭐</span><span>🎈</span>
+        <!-- Camada do vídeo de demonstração (sem YouTube) -->
+        <div id="player-demo-layer" class="absolute inset-0 flex flex-col items-center justify-center p-6">
+          <div class="absolute inset-0 opacity-20 pointer-events-none flex items-center justify-around text-7xl">
+            <span>☁️</span><span>⭐</span><span>🎈</span>
+          </div>
+          <div id="player-stage-emoji" class="stage-actor text-7xl sm:text-8xl mb-3 drop-shadow-lg select-none">🚀</div>
+          <p id="player-stage-subtitle" class="font-kid text-white text-xl sm:text-2xl font-bold drop-shadow max-w-lg">
+            Reproduzindo vídeo seguro...
+          </p>
+          <div class="mt-3 px-3 py-1 rounded-full bg-black/25 text-white/95 text-xs font-bold flex items-center gap-1.5">
+            <span>🛡️</span> Vídeo de demonstração
+          </div>
         </div>
 
-        <!-- Personagem/Ilustração animada do vídeo -->
-        <div id="player-stage-emoji" class="stage-actor text-7xl sm:text-8xl mb-3 drop-shadow-lg select-none">
-          🚀
+        <!-- Camada do YouTube: o vídeo real fica aqui, sem receber toques -->
+        <div id="player-yt-layer" class="hidden absolute inset-0 bg-black">
+          <div id="yt-player" class="w-full h-full pointer-events-none"></div>
+          <!-- Escudo: cobre o vídeo inteiro para a criança não clicar em links, logo ou sugestões do YouTube -->
+          <button id="yt-shield" onclick="togglePlayPause()" aria-label="Pausar ou continuar"
+                  class="absolute inset-0 w-full h-full flex items-center justify-center bg-transparent focus:outline-none">
+            <span id="yt-shield-paused" class="hidden absolute inset-0 bg-slate-900/90 flex flex-col items-center justify-center gap-3">
+              <span class="w-20 h-20 rounded-full bg-white text-sky-600 flex items-center justify-center text-4xl shadow-lg pl-1.5">▶</span>
+              <span class="font-kid text-white text-lg font-bold">Toque para continuar</span>
+            </span>
+            <span id="yt-shield-loading" class="hidden absolute inset-0 bg-slate-900 flex items-center justify-center">
+              <span class="font-kid text-white text-lg font-bold animate-pulse">Carregando vídeo...</span>
+            </span>
+          </button>
         </div>
 
-        <p id="player-stage-subtitle" class="font-kid text-white text-xl sm:text-2xl font-bold drop-shadow max-w-lg">
-          Reproduzindo vídeo seguro...
-        </p>
-
-        <!-- Aviso de ambiente protegido -->
-        <div class="mt-3 px-3 py-1 rounded-full bg-black/25 text-white/95 text-xs font-bold flex items-center gap-1.5">
-          <span>🛡️</span> Sem anúncios e sem vídeos aleatórios
+        <!-- Mensagem de erro do YouTube -->
+        <div id="player-error-overlay" class="hidden absolute inset-0 bg-slate-900 flex flex-col items-center justify-center p-6 text-white">
+          <div class="text-5xl mb-2">😕</div>
+          <h4 class="font-kid text-xl sm:text-2xl font-bold mb-1">Ops! Este vídeo não abriu.</h4>
+          <p id="player-error-text" class="text-sm text-slate-300 font-semibold max-w-md"></p>
         </div>
 
         <!-- Overlay de Fim de Vídeo -->
@@ -558,6 +593,12 @@
                   class="btn-tactile px-4 py-3 rounded-2xl bg-rose-50 border-2 border-rose-200 text-rose-600 font-kid font-bold text-base shadow-kid flex items-center gap-1.5">
             <span id="player-fav-icon">🤍</span>
             <span class="hidden sm:inline">Favorito</span>
+          </button>
+
+          <button id="player-fs-btn" onclick="enterPlayerFullscreen()" aria-label="Tela cheia"
+                  class="hidden btn-tactile px-4 py-3 rounded-2xl bg-sky-50 border-2 border-sky-200 text-sky-700 font-kid font-bold text-base shadow-kid flex items-center gap-1.5">
+            <span>⛶</span>
+            <span class="hidden sm:inline">Tela cheia</span>
           </button>
         </div>
 
@@ -801,9 +842,70 @@
         currentVideoId: null,
         isPlaying: false,
         progressPercent: 0,
-        intervalId: null
+        intervalId: null,
+        mode: null                 // 'yt' (YouTube) | 'demo' (vídeo de exemplo)
       }
     };
+
+    // Canais com a lista de vídeos aberta no painel dos pais (mantém aberta ao redesenhar)
+    const openChannelDetails = new Set();
+
+    // -----------------------------------------------------------------------
+    // 2.0 UTILITÁRIOS: TEXTO SEGURO E YOUTUBE
+    // -----------------------------------------------------------------------
+    // Títulos e nomes de canal vêm do YouTube: sempre escapar antes de pôr no HTML
+    function esc(text) {
+      return String(text ?? '').replace(/[&<>"'`]/g, ch => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;'
+      }[ch]));
+    }
+
+    // Aceita youtu.be/ID, youtube.com/watch?v=ID, /shorts/ID, /embed/ID, /live/ID e o ID puro
+    function parseYouTubeId(input) {
+      const text = String(input || '').trim();
+      if (/^[A-Za-z0-9_-]{11}$/.test(text)) return text;
+      let url;
+      try { url = new URL(text.startsWith('http') ? text : 'https://' + text); } catch (e) { return null; }
+      const host = url.hostname.replace(/^(www\.|m\.|music\.)/, '');
+      let id = null;
+      if (host === 'youtu.be') {
+        id = url.pathname.split('/')[1];
+      } else if (host === 'youtube.com' || host === 'youtube-nocookie.com') {
+        id = url.searchParams.get('v');
+        if (!id) {
+          const m = url.pathname.match(/^\/(shorts|embed|live|v)\/([^/?#]+)/);
+          if (m) id = m[2];
+        }
+      }
+      return id && /^[A-Za-z0-9_-]{11}$/.test(id) ? id : null;
+    }
+
+    function youTubeThumb(id) {
+      return `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+    }
+
+    // Busca título e canal pelo oEmbed público do YouTube (não precisa de chave)
+    async function fetchYouTubeInfo(id) {
+      const watchUrl = `https://www.youtube.com/watch?v=${id}`;
+      const res = await fetch(`https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(watchUrl)}`);
+      if (res.status === 401 || res.status === 403) throw new Error('embed-blocked');
+      if (!res.ok) throw new Error('not-found');
+      const data = await res.json();
+      return {
+        title: String(data.title || 'Vídeo do YouTube').slice(0, 120),
+        channelName: String(data.author_name || 'Canal do YouTube').slice(0, 60),
+        channelUrl: String(data.author_url || '')
+      };
+    }
+
+    // Miniatura do vídeo: foto do YouTube ou ilustração (vídeos de exemplo)
+    function videoThumbHTML(video, emojiSize) {
+      if (video.youtubeId) {
+        return `<img src="${youTubeThumb(video.youtubeId)}" alt="" loading="lazy" referrerpolicy="no-referrer"
+                     class="absolute inset-0 w-full h-full object-cover">`;
+      }
+      return `<span class="${emojiSize} drop-shadow-md group-hover:scale-110 transition-transform duration-300">${video.emoji}</span>`;
+    }
 
     // -----------------------------------------------------------------------
     // 2.1 SALVAR NO APARELHO (localStorage) - dados ficam só neste celular
@@ -1041,8 +1143,8 @@
         return `
           <div onclick="openVideoPlayer('${video.id}')"
                class="btn-tactile cursor-pointer shrink-0 w-56 sm:w-64 rounded-2xl bg-slate-50 border-2 border-slate-200 hover:border-sky-400 overflow-hidden shadow-sm flex flex-col">
-            <div class="relative h-28 bg-gradient-to-br ${video.bgGradient} flex items-center justify-center">
-              <span class="text-5xl drop-shadow">${video.emoji}</span>
+            <div class="relative h-28 bg-gradient-to-br ${video.bgGradient} flex items-center justify-center overflow-hidden">
+              ${videoThumbHTML(video, 'text-5xl')}
               <span class="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-white/90 text-slate-800 text-[10px] font-extrabold">
                 ${channel.watchCount === 0 ? '🆕 Novo Canal!' : cat.icon + ' ' + cat.title}
               </span>
@@ -1051,10 +1153,10 @@
               </div>
             </div>
             <div class="p-3 flex-1 flex flex-col justify-between">
-              <p class="font-kid font-bold text-sm text-slate-800 line-clamp-2 leading-snug">${video.title}</p>
+              <p class="font-kid font-bold text-sm text-slate-800 line-clamp-2 leading-snug">${esc(video.title)}</p>
               <div class="flex items-center gap-1.5 mt-2 pt-1.5 border-t border-slate-200/70">
                 <span class="text-sm">${channel.avatar}</span>
-                <span class="text-xs font-extrabold text-slate-600 truncate">${channel.name}</span>
+                <span class="text-xs font-extrabold text-slate-600 truncate">${esc(channel.name)}</span>
               </div>
             </div>
           </div>
@@ -1075,7 +1177,7 @@
             <div class="absolute -bottom-4 -left-4 w-24 h-24 rounded-full bg-white/10"></div>
             <div class="absolute -top-4 -right-4 w-20 h-20 rounded-full bg-white/10"></div>
 
-            <span class="text-6xl sm:text-7xl drop-shadow-md group-hover:scale-110 transition-transform duration-300">${video.emoji}</span>
+            ${videoThumbHTML(video, 'text-6xl sm:text-7xl')}
 
             <!-- Tag da Categoria -->
             <span class="absolute top-3 left-3 px-3 py-1 rounded-full ${cat.badgeBg} text-xs font-extrabold shadow-sm">
@@ -1083,9 +1185,10 @@
             </span>
 
             <!-- Duração -->
+            ${video.duration ? `
             <span class="absolute bottom-3 right-3 px-2.5 py-0.5 rounded-lg bg-slate-900/75 text-white text-xs font-extrabold">
-              ${video.duration}
-            </span>
+              ${esc(video.duration)}
+            </span>` : ''}
 
             <!-- Botão Play Central -->
             <div class="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-black/20 transition-colors">
@@ -1097,8 +1200,8 @@
 
           <!-- Informações do Vídeo e Canal -->
           <div class="p-4 flex-1 flex flex-col justify-between gap-3">
-            <h3 onclick="openVideoPlayer('${video.id}')" class="cursor-pointer font-kid text-base sm:text-lg font-bold text-slate-800 hover:text-sky-600 leading-snug">
-              ${video.title}
+            <h3 onclick="openVideoPlayer('${video.id}')" class="cursor-pointer font-kid text-base sm:text-lg font-bold text-slate-800 hover:text-sky-600 leading-snug line-clamp-3">
+              ${esc(video.title)}
             </h3>
 
             <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
@@ -1106,7 +1209,7 @@
                 <span class="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-base shrink-0">
                   ${channel.avatar}
                 </span>
-                <span class="text-xs font-extrabold text-slate-600 truncate">${channel.name}</span>
+                <span class="text-xs font-extrabold text-slate-600 truncate">${esc(channel.name)}</span>
               </div>
 
               <!-- Botão Favoritar Grande -->
@@ -1165,7 +1268,8 @@
         clearBtn.classList.remove('hidden');
 
         const chVideos = appState.videos.filter(v => v.channelId === appState.selectedChannelId);
-        document.getElementById('selected-channel-title').innerHTML = `${channel.avatar} Vídeos de ${channel.name}`;
+        if (!channel) { appState.selectedChannelId = null; return renderChannelsView(); }
+        document.getElementById('selected-channel-title').textContent = `${channel.avatar} Vídeos de ${channel.name}`;
         document.getElementById('selected-channel-videos-grid').innerHTML = chVideos.map(createVideoCardHTML).join('');
         return;
       }
@@ -1203,7 +1307,7 @@
                         ${ch.avatar}
                       </span>
                       <div class="min-w-0">
-                        <p class="font-kid font-bold text-base text-slate-800 truncate">${ch.name}</p>
+                        <p class="font-kid font-bold text-base text-slate-800 truncate">${esc(ch.name)}</p>
                         <p class="text-xs font-extrabold text-sky-600">${vidCount} ${vidCount === 1 ? 'vídeo' : 'vídeos'} →</p>
                       </div>
                     </button>
@@ -1288,17 +1392,27 @@
       document.getElementById('parent-channels-count').textContent = appState.channels.length;
       const listEl = document.getElementById('parent-channels-list');
 
+      document.getElementById('btn-remove-demo').classList.toggle('hidden', !appState.videos.some(v => !v.youtubeId));
+
       listEl.innerHTML = appState.channels.map(ch => {
         const cat = CATEGORIES[ch.category];
+        const chVideos = appState.videos.filter(v => v.channelId === ch.id);
+        const videosHTML = chVideos.map(v => `
+          <li class="flex items-center justify-between gap-2 py-1.5">
+            <span class="text-xs font-bold text-slate-600 truncate">${v.youtubeId ? '▶️' : '🧸'} ${esc(v.title)}</span>
+            <button onclick="deleteVideo('${v.id}')" aria-label="Remover vídeo"
+                    class="shrink-0 w-8 h-8 rounded-lg bg-slate-100 hover:bg-rose-100 text-slate-500 hover:text-rose-600 text-sm font-bold">✕</button>
+          </li>`).join('');
         return `
-          <div class="py-3.5 flex items-center justify-between gap-3">
+          <div class="py-3.5">
+          <div class="flex items-center justify-between gap-3">
             <div class="flex items-center gap-3 min-w-0">
               <span class="w-11 h-11 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-2xl shrink-0">
                 ${ch.avatar}
               </span>
               <div class="min-w-0">
                 <p class="font-kid font-bold text-base text-slate-800 truncate ${!ch.active ? 'line-through text-slate-400' : ''}">
-                  ${ch.name}
+                  ${esc(ch.name)}
                 </p>
                 <div class="flex flex-wrap items-center gap-1.5 mt-0.5">
                   <span class="text-[11px] font-extrabold px-2 py-0.5 rounded-full ${cat.badgeBg}">
@@ -1311,10 +1425,20 @@
               </div>
             </div>
 
-            <button onclick="toggleChannelActive('${ch.id}')"
-                    class="btn-tactile px-3.5 py-2 rounded-xl font-kid font-bold text-xs shrink-0 ${ch.active ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-slate-200 text-slate-600'}">
-              ${ch.active ? '✓ Ativo' : 'Pausado'}
-            </button>
+            <div class="flex items-center gap-1.5 shrink-0">
+              <button onclick="toggleChannelActive('${ch.id}')"
+                      class="btn-tactile px-3.5 py-2 rounded-xl font-kid font-bold text-xs ${ch.active ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-slate-200 text-slate-600'}">
+                ${ch.active ? '✓ Ativo' : 'Pausado'}
+              </button>
+              <button onclick="deleteChannel('${ch.id}')" aria-label="Remover canal"
+                      class="btn-tactile w-9 h-9 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 text-base">🗑️</button>
+            </div>
+          </div>
+          <details class="mt-2 ml-14" ${openChannelDetails.has(ch.id) ? 'open' : ''}
+                   ontoggle="this.open ? openChannelDetails.add('${ch.id}') : openChannelDetails.delete('${ch.id}')">
+            <summary class="cursor-pointer text-xs font-extrabold text-sky-700">${chVideos.length} ${chVideos.length === 1 ? 'vídeo' : 'vídeos'}</summary>
+            <ul class="mt-1 divide-y divide-slate-100">${videosHTML || '<li class="text-xs text-slate-400 py-1.5">Nenhum vídeo.</li>'}</ul>
+          </details>
           </div>
         `;
       }).join('');
@@ -1575,78 +1699,283 @@
       renderAll();
     }
 
-    function handleAddChannel(event) {
+    const AVATARS_BY_CATEGORY = {
+      entretenimento: ['🐻', '🦄', '🎪', '🐶'],
+      cristao: ['🕊️', '🐑', '🌈', '⛪'],
+      bilingue: ['🦉', '🔤', '🌎', '🐸'],
+      matematica: ['🧮', '🚀', '🔢', '🐙']
+    };
+
+    // Pais colam o link de um vídeo do YouTube; título e canal vêm sozinhos
+    async function handleAddVideo(event) {
       event.preventDefault();
-      const nameInput = document.getElementById('new-channel-name');
-      const categorySelect = document.getElementById('new-channel-category');
+      const urlInput = document.getElementById('new-video-url');
+      const category = document.getElementById('new-channel-category').value;
+      const button = document.getElementById('btn-add-video');
 
-      // Remove caracteres que poderiam quebrar o HTML e limita o tamanho
-      const name = nameInput.value.replace(/[<>&"'`\\]/g, '').trim().slice(0, 40);
-      const category = categorySelect.value;
-      if (!name) return;
+      const youtubeId = parseYouTubeId(urlInput.value);
+      if (!youtubeId) {
+        showToast('Não reconheci esse link. Copie o link do vídeo no YouTube (Compartilhar → Copiar link).', 'warn');
+        return;
+      }
+      if (appState.videos.some(v => v.youtubeId === youtubeId)) {
+        showToast('Este vídeo já está na lista.', 'info');
+        return;
+      }
 
-      const avatarsByCategory = {
-        entretenimento: ['🐻', '🦄', '🎪', '🐶'],
-        cristao: ['🕊️', '🐑', '🌈', '⛪'],
-        bilingue: ['🦉', '🔤', '🌎', '🐸'],
-        matematica: ['🧮', '🚀', '🔢', '🐙']
-      };
+      button.disabled = true;
+      button.textContent = 'Buscando...';
+      let info;
+      try {
+        info = await fetchYouTubeInfo(youtubeId);
+      } catch (err) {
+        const messages = {
+          'embed-blocked': 'Este vídeo não permite ser assistido fora do YouTube. Escolha outro.',
+          'not-found': 'Vídeo não encontrado. Ele pode ser privado ou ter sido removido.'
+        };
+        showToast(messages[err.message] || 'Sem internet no momento. Tente de novo.', 'warn');
+        return;
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Adicionar Vídeo';
+      }
 
-      const pool = avatarsByCategory[category] || ['📺'];
-      const avatar = pool[Math.floor(Math.random() * pool.length)];
-      const newChannelId = 'ch-' + Date.now();
+      // Reaproveita o canal se ele já foi aprovado; senão, cria no pilar escolhido
+      let channel = appState.channels.find(c =>
+        (info.channelUrl && c.ytChannelUrl === info.channelUrl) ||
+        c.name.toLowerCase() === info.channelName.toLowerCase()
+      );
+      let channelCreated = false;
+      if (!channel) {
+        const pool = AVATARS_BY_CATEGORY[category] || ['📺'];
+        channel = {
+          id: 'ch-' + Date.now(),
+          name: info.channelName,
+          category,
+          avatar: pool[Math.floor(Math.random() * pool.length)],
+          active: true,
+          watchCount: 0,               // canal novo entra no topo da rotação justa
+          ytChannelUrl: info.channelUrl
+        };
+        appState.channels.push(channel);
+        channelCreated = true;
+      }
 
-      // Adiciona o novo canal com watchCount = 0 para entrar imediatamente no topo da rotação justa!
-      appState.channels.push({
-        id: newChannelId,
-        name,
-        category,
-        avatar,
-        active: true,
-        watchCount: 0
+      appState.videos.unshift({
+        id: 'yt-' + youtubeId,
+        youtubeId,
+        channelId: channel.id,
+        category: channel.category,
+        title: info.title,
+        duration: '',
+        durationSec: 0,
+        emoji: channel.avatar,
+        bgGradient: CATEGORIES[channel.category].gradient,
+        isNew: true,
+        addedAt: Date.now()
       });
 
-      // Cria automaticamente 2 vídeos curados de demonstração para o novo canal aprovado
-      const catObj = CATEGORIES[category];
-      appState.videos.unshift(
-        {
-          id: 'vid-' + Date.now() + '-1',
-          channelId: newChannelId,
-          category,
-          title: `Bem-vindo ao ${name}: Episódio Especial!`,
-          duration: '3:10',
-          durationSec: 190,
-          emoji: avatar,
-          bgGradient: catObj.gradient,
-          isNew: true
-        },
-        {
-          id: 'vid-' + Date.now() + '-2',
-          channelId: newChannelId,
-          category,
-          title: `Aventura Educativa com ${name}`,
-          duration: '2:40',
-          durationSec: 160,
-          emoji: catObj.icon,
-          bgGradient: catObj.gradient,
-          isNew: true
-        }
-      );
-
-      nameInput.value = '';
+      urlInput.value = '';
       saveState();
       playGentleChime('unlock');
-      showToast(`🎉 Canal "${name}" aprovado e adicionado ao Modo Descoberta!`, 'success');
+      const where = channelCreated
+        ? `novo canal "${channel.name}" em ${CATEGORIES[channel.category].title}`
+        : `canal "${channel.name}"`;
+      showToast(`✅ Vídeo adicionado ao ${where}!`, 'success');
+      if (!channel.active) showToast('Atenção: este canal está pausado. Ative-o para a criança ver.', 'warn');
+      renderAll();
+    }
+
+    function deleteVideo(videoId) {
+      const video = appState.videos.find(v => v.id === videoId);
+      if (!video || !confirm(`Remover o vídeo "${video.title}"?`)) return;
+      appState.videos = appState.videos.filter(v => v.id !== videoId);
+      appState.favorites = appState.favorites.filter(id => id !== videoId);
+      saveState();
+      showToast('Vídeo removido.', 'info');
+      renderAll();
+    }
+
+    function deleteChannel(channelId) {
+      const channel = appState.channels.find(c => c.id === channelId);
+      if (!channel) return;
+      const count = appState.videos.filter(v => v.channelId === channelId).length;
+      if (!confirm(`Remover o canal "${channel.name}" e ${count === 1 ? 'seu vídeo' : `seus ${count} vídeos`}?`)) return;
+      const removedIds = new Set(appState.videos.filter(v => v.channelId === channelId).map(v => v.id));
+      appState.videos = appState.videos.filter(v => v.channelId !== channelId);
+      appState.favorites = appState.favorites.filter(id => !removedIds.has(id));
+      appState.channels = appState.channels.filter(c => c.id !== channelId);
+      if (appState.selectedChannelId === channelId) appState.selectedChannelId = null;
+      saveState();
+      showToast(`Canal "${channel.name}" removido.`, 'info');
+      renderAll();
+    }
+
+    // Remove os vídeos simulados que vieram com o app (e canais que ficarem vazios)
+    function removeDemoContent() {
+      if (!confirm('Remover todos os vídeos de exemplo? Os vídeos do YouTube que você adicionou continuam.')) return;
+      const demoIds = new Set(appState.videos.filter(v => !v.youtubeId).map(v => v.id));
+      appState.videos = appState.videos.filter(v => v.youtubeId);
+      appState.favorites = appState.favorites.filter(id => !demoIds.has(id));
+      const usedChannels = new Set(appState.videos.map(v => v.channelId));
+      appState.channels = appState.channels.filter(c => usedChannels.has(c.id) || c.ytChannelUrl);
+      saveState();
+      showToast('Vídeos de exemplo removidos.', 'success');
       renderAll();
     }
 
     // -----------------------------------------------------------------------
     // 9. PLAYER DE VÍDEO LIVRE DE DISTRAÇÕES
+    //    Vídeos do YouTube tocam no player oficial (youtube-nocookie), sem os
+    //    controles do YouTube e com um "escudo" por cima: a criança só usa os
+    //    botões do app e não consegue abrir links, canais ou sugestões.
     // -----------------------------------------------------------------------
+    let ytApiPromise = null;
+    let ytPlayer = null;
+    let ytPlayerReady = false;
+    let ytPendingId = null;
+    let ytPausedTimer = null;
+
     function formatSeconds(sec) {
       const m = Math.floor(sec / 60);
       const s = Math.floor(sec % 60);
       return `${m}:${s < 10 ? '0' : ''}${s}`;
+    }
+
+    function loadYouTubeApi() {
+      if (window.YT && window.YT.Player) return Promise.resolve();
+      if (ytApiPromise) return ytApiPromise;
+      ytApiPromise = new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => { ytApiPromise = null; reject(new Error('timeout')); }, 15000);
+        window.onYouTubeIframeAPIReady = () => { clearTimeout(timeout); resolve(); };
+        const script = document.createElement('script');
+        script.src = 'https://www.youtube.com/iframe_api';
+        script.onerror = () => { clearTimeout(timeout); ytApiPromise = null; script.remove(); reject(new Error('offline')); };
+        document.head.appendChild(script);
+      });
+      return ytApiPromise;
+    }
+
+    function currentVideo() {
+      return appState.videos.find(v => v.id === appState.player.currentVideoId) || null;
+    }
+
+    function isYouTubeMode() {
+      return appState.player.mode === 'yt';
+    }
+
+    function setShield(state) {
+      // state: 'loading' | 'paused' | 'none'
+      clearTimeout(ytPausedTimer);
+      document.getElementById('yt-shield-loading').classList.toggle('hidden', state !== 'loading');
+      document.getElementById('yt-shield-paused').classList.toggle('hidden', state !== 'paused');
+    }
+
+    function showPlayerError(message) {
+      appState.player.isPlaying = false;
+      setShield('none');
+      document.getElementById('player-error-text').textContent = message;
+      document.getElementById('player-error-overlay').classList.remove('hidden');
+      updatePlayerPlayButtonUI();
+    }
+
+    function startYouTube(youtubeId) {
+      setShield('loading');
+      loadYouTubeApi().then(() => {
+        if (!appState.player.currentVideoId) return; // fechou antes de carregar
+        if (ytPlayer && ytPlayerReady) {
+          ytPlayer.loadVideoById(youtubeId);
+        } else if (ytPlayer) {
+          ytPendingId = youtubeId;      // ainda iniciando: toca quando ficar pronto
+        } else {
+          ytPendingId = youtubeId;
+          ytPlayer = new YT.Player('yt-player', {
+            host: 'https://www.youtube-nocookie.com',
+            videoId: youtubeId,
+            playerVars: {
+              autoplay: 1, controls: 0, rel: 0, fs: 0, disablekb: 1,
+              iv_load_policy: 3, modestbranding: 1, playsinline: 1,
+              cc_load_policy: 0, origin: location.origin
+            },
+            events: {
+              onReady: (e) => {
+                ytPlayerReady = true;
+                if (!appState.player.currentVideoId) { e.target.stopVideo(); return; }
+                if (ytPendingId && e.target.getVideoData().video_id !== ytPendingId) {
+                  e.target.loadVideoById(ytPendingId);
+                } else {
+                  e.target.playVideo();
+                }
+              },
+              onStateChange: onYouTubeStateChange,
+              onError: onYouTubeError
+            }
+          });
+        }
+      }).catch(() => {
+        showPlayerError('Precisa de internet para assistir. Confira o Wi-Fi e tente de novo.');
+      });
+    }
+
+    function onYouTubeStateChange(e) {
+      if (!appState.player.currentVideoId || !isYouTubeMode()) {
+        if (e.data === YT.PlayerState.PLAYING) e.target.pauseVideo();
+        return;
+      }
+      switch (e.data) {
+        case YT.PlayerState.PLAYING: {
+          appState.player.isPlaying = true;
+          setShield('none');
+          const video = currentVideo();
+          const dur = e.target.getDuration();
+          if (video && !video.durationSec && dur > 0) {
+            video.durationSec = Math.round(dur);
+            video.duration = formatSeconds(dur);
+            saveState();
+          }
+          break;
+        }
+        case YT.PlayerState.PAUSED:
+          appState.player.isPlaying = false;
+          setShield('paused');
+          break;
+        case YT.PlayerState.ENDED:
+          onVideoEnded();
+          break;
+        case YT.PlayerState.CUED:
+          appState.player.isPlaying = false;
+          setShield('paused');
+          break;
+        case -1: // não iniciado: se o navegador bloquear o autoplay, mostra o botão de tocar
+          clearTimeout(ytPausedTimer);
+          ytPausedTimer = setTimeout(() => {
+            if (!appState.player.isPlaying && appState.player.currentVideoId) setShield('paused');
+          }, 2500);
+          break;
+      }
+      updatePlayerPlayButtonUI();
+    }
+
+    function onYouTubeError(e) {
+      const messages = {
+        2: 'O link deste vídeo parece estar errado.',
+        5: 'Este aparelho não conseguiu tocar o vídeo.',
+        100: 'Este vídeo foi removido ou ficou privado.',
+        101: 'O dono deste vídeo não permite assistir fora do YouTube.',
+        150: 'O dono deste vídeo não permite assistir fora do YouTube.'
+      };
+      showPlayerError((messages[e.data] || 'Não foi possível tocar este vídeo.') + ' Peça para um adulto escolher outro.');
+    }
+
+    function onVideoEnded() {
+      appState.player.isPlaying = false;
+      appState.player.progressPercent = 100;
+      clearInterval(appState.player.intervalId);
+      setShield('none');
+      document.getElementById('player-stage').classList.remove('playing-stage');
+      document.getElementById('player-ended-overlay').classList.remove('hidden');
+      updatePlayerProgressUI();
+      updatePlayerPlayButtonUI();
     }
 
     function openVideoPlayer(videoId) {
@@ -1661,7 +1990,7 @@
 
       playGentleChime('tap');
       appState.player.currentVideoId = videoId;
-      appState.player.isPlaying = true;
+      appState.player.mode = video.youtubeId ? 'yt' : 'demo';
       appState.player.progressPercent = 0;
 
       const cat = CATEGORIES[video.category];
@@ -1672,11 +2001,23 @@
 
       const stage = document.getElementById('player-stage');
       stage.className = `playing-stage relative aspect-video w-full flex flex-col items-center justify-center p-6 text-center overflow-hidden bg-gradient-to-br ${video.bgGradient}`;
-      document.getElementById('player-stage-emoji').textContent = video.emoji;
-      document.getElementById('player-stage-subtitle').textContent = video.title;
       document.getElementById('player-ended-overlay').classList.add('hidden');
+      document.getElementById('player-error-overlay').classList.add('hidden');
+      document.getElementById('player-demo-layer').classList.toggle('hidden', isYouTubeMode());
+      document.getElementById('player-yt-layer').classList.toggle('hidden', !isYouTubeMode());
+      document.getElementById('player-fs-btn').classList.toggle('hidden', !canFullscreen());
 
-      document.getElementById('player-time-total').textContent = video.duration;
+      if (isYouTubeMode()) {
+        appState.player.isPlaying = false;
+        document.getElementById('player-time-total').textContent = video.duration || '0:00';
+        startYouTube(video.youtubeId);
+      } else {
+        appState.player.isPlaying = true;
+        document.getElementById('player-stage-emoji').textContent = video.emoji;
+        document.getElementById('player-stage-subtitle').textContent = video.title;
+        document.getElementById('player-time-total').textContent = video.duration;
+      }
+
       updatePlayerProgressUI();
       updatePlayerPlayButtonUI();
       updatePlayerFavoriteButton();
@@ -1689,28 +2030,38 @@
     function startPlayerTimer() {
       clearInterval(appState.player.intervalId);
       appState.player.intervalId = setInterval(() => {
+        if (isYouTubeMode()) {
+          // No YouTube o tempo vem do próprio player
+          if (ytPlayerReady && appState.player.isPlaying) {
+            const dur = ytPlayer.getDuration();
+            if (dur > 0) appState.player.progressPercent = Math.min(100, (ytPlayer.getCurrentTime() / dur) * 100);
+            updatePlayerProgressUI();
+          }
+          return;
+        }
         if (!appState.player.isPlaying) return;
 
-        // Avança suavemente para demonstração interativa (~20s para completar o vídeo simulado)
+        // Vídeo de demonstração: avança sozinho (~20s até o fim)
         appState.player.progressPercent += 1.25;
         if (appState.player.progressPercent >= 100) {
-          appState.player.progressPercent = 100;
-          appState.player.isPlaying = false;
-          clearInterval(appState.player.intervalId);
-          document.getElementById('player-stage').classList.remove('playing-stage');
-          document.getElementById('player-ended-overlay').classList.remove('hidden');
-          updatePlayerPlayButtonUI();
+          onVideoEnded();
+          return;
         }
         updatePlayerProgressUI();
       }, 250);
     }
 
     function updatePlayerProgressUI() {
-      const video = appState.videos.find(v => v.id === appState.player.currentVideoId);
-      const bar = document.getElementById('player-progress-bar');
-      bar.style.width = `${appState.player.progressPercent}%`;
+      const video = currentVideo();
+      document.getElementById('player-progress-bar').style.width = `${appState.player.progressPercent}%`;
+      if (!video) return;
 
-      if (video) {
+      if (isYouTubeMode()) {
+        if (!ytPlayerReady) return;
+        const dur = ytPlayer.getDuration() || 0;
+        document.getElementById('player-time-current').textContent = formatSeconds((appState.player.progressPercent / 100) * dur);
+        if (dur > 0) document.getElementById('player-time-total').textContent = formatSeconds(dur);
+      } else {
         const elapsed = (appState.player.progressPercent / 100) * video.durationSec;
         document.getElementById('player-time-current').textContent = formatSeconds(elapsed);
       }
@@ -1724,7 +2075,7 @@
       if (appState.player.isPlaying) {
         icon.textContent = '⏸️';
         label.textContent = 'Pausar';
-        stage.classList.add('playing-stage');
+        if (!isYouTubeMode()) stage.classList.add('playing-stage');
       } else {
         icon.textContent = '▶️';
         label.textContent = 'Continuar';
@@ -1745,6 +2096,16 @@
         replayCurrentVideo();
         return;
       }
+      if (isYouTubeMode()) {
+        if (!ytPlayerReady) return;
+        if (appState.player.isPlaying) {
+          ytPlayer.pauseVideo();
+        } else {
+          setShield('none');
+          ytPlayer.playVideo();
+        }
+        return; // a interface é atualizada pelo onStateChange
+      }
       appState.player.isPlaying = !appState.player.isPlaying;
       updatePlayerPlayButtonUI();
       // Religa o contador (ele é desligado quando o vídeo chega ao fim)
@@ -1754,8 +2115,14 @@
     function replayCurrentVideo() {
       playGentleChime('tap');
       appState.player.progressPercent = 0;
-      appState.player.isPlaying = true;
       document.getElementById('player-ended-overlay').classList.add('hidden');
+      if (isYouTubeMode()) {
+        if (ytPlayerReady) { ytPlayer.seekTo(0, true); ytPlayer.playVideo(); }
+        startPlayerTimer();
+        updatePlayerProgressUI();
+        return;
+      }
+      appState.player.isPlaying = true;
       updatePlayerProgressUI();
       updatePlayerPlayButtonUI();
       startPlayerTimer();
@@ -1765,8 +2132,15 @@
       const rect = event.currentTarget.getBoundingClientRect();
       const clickX = event.clientX - rect.left;
       const pct = Math.max(0, Math.min(100, (clickX / rect.width) * 100));
-      appState.player.progressPercent = pct;
+      const wasEnded = appState.player.progressPercent >= 100;
+      appState.player.progressPercent = Math.min(pct, 99.5);
       document.getElementById('player-ended-overlay').classList.add('hidden');
+
+      if (isYouTubeMode() && ytPlayerReady) {
+        const dur = ytPlayer.getDuration();
+        if (dur > 0) ytPlayer.seekTo((pct / 100) * dur, true);
+        if (wasEnded) { ytPlayer.playVideo(); startPlayerTimer(); }
+      }
       updatePlayerProgressUI();
     }
 
@@ -1776,13 +2150,49 @@
       }
     }
 
+    function canFullscreen() {
+      return !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
+    }
+
+    function enterPlayerFullscreen() {
+      playGentleChime('tap');
+      const stage = document.getElementById('player-stage');
+      const request = stage.requestFullscreen || stage.webkitRequestFullscreen;
+      if (!request) return;
+      Promise.resolve(request.call(stage)).then(() => {
+        // Deita a tela no celular quando possível
+        if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {});
+      }).catch(() => {});
+    }
+
+    function exitPlayerFullscreen() {
+      const fsElement = document.fullscreenElement || document.webkitFullscreenElement;
+      if (!fsElement) return;
+      const exit = document.exitFullscreen || document.webkitExitFullscreen;
+      if (exit) Promise.resolve(exit.call(document)).catch(() => {});
+    }
+
     function closeVideoPlayer() {
       playGentleChime('tap');
       clearInterval(appState.player.intervalId);
+      clearTimeout(ytPausedTimer);
+      if (ytPlayerReady) {
+        try { ytPlayer.stopVideo(); } catch (e) {}
+      }
+      exitPlayerFullscreen();
       appState.player.isPlaying = false;
       appState.player.currentVideoId = null;
+      appState.player.mode = null;
+      setShield('none');
       document.getElementById('video-player-modal').classList.add('hidden');
     }
+
+    // Se o app for para segundo plano (tela bloqueada, outro app), pausa o vídeo
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && isYouTubeMode() && ytPlayerReady && appState.player.isPlaying) {
+        ytPlayer.pauseVideo();
+      }
+    });
 
     // Suporte a teclado físico no PIN (para testes no desktop)
     document.addEventListener('keydown', (e) => {
