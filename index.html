@@ -1,0 +1,1817 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Kids TV Segura - Vídeos Curados pelos Pais</title>
+
+  <!-- App instalável (tela inicial do celular) -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#0EA5E9">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Kids TV">
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+
+  <!-- Tailwind CSS via CDN (versão fixa; fica guardado no aparelho pelo service worker) -->
+  <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+  <!-- Google Fonts: Fredoka para títulos amigáveis e Nunito para alta legibilidade -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['Fredoka', 'sans-serif'],
+            body: ['Nunito', 'sans-serif'],
+          },
+          boxShadow: {
+            'kid': '0 6px 0 rgba(15, 23, 42, 0.12)',
+            'kid-lg': '0 10px 20px -5px rgba(15, 23, 42, 0.15), 0 6px 0 rgba(15, 23, 42, 0.12)',
+            'nav': '0 -6px 24px rgba(15, 23, 42, 0.08)',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Estilos base e animações lúdicas */
+    body {
+      font-family: 'Nunito', sans-serif;
+      background-color: #FFFDF7;
+      background-image: radial-gradient(#E2E8F0 1.2px, transparent 1.2px);
+      background-size: 24px 24px;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    h1, h2, h3, .font-kid {
+      font-family: 'Fredoka', sans-serif;
+    }
+
+    /* Botão tátil estilo brinquedo */
+    .btn-tactile {
+      transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.12s ease;
+    }
+    .btn-tactile:active {
+      transform: translateY(4px) scale(0.98);
+      box-shadow: 0 2px 0 rgba(15, 23, 42, 0.12);
+    }
+
+    /* Animação suave de flutuação para ilustrações */
+    @keyframes floatSlow {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-6px) rotate(2deg); }
+    }
+    .animate-float {
+      animation: floatSlow 3.5s ease-in-out infinite;
+    }
+
+    /* Animação do player simulado */
+    @keyframes stagePulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.06); }
+    }
+    .playing-stage .stage-actor {
+      animation: stagePulse 1.8s ease-in-out infinite;
+    }
+
+    /* Animação de erro no PIN */
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-8px); }
+      40%, 80% { transform: translateX(8px); }
+    }
+    .animate-shake {
+      animation: shake 0.35s ease-in-out;
+    }
+
+    /* Ocultar barra de rolagem horizontal mantendo funcionalidade */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="text-slate-800 pb-28 min-h-screen flex flex-col">
+
+  <!-- ===================================================================== -->
+  <!-- NOTIFICAÇÃO FLUTUANTE (TOAST) - Substitui alert() de forma amigável   -->
+  <!-- ===================================================================== -->
+  <div id="toast-container" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none w-[92%] max-w-md flex flex-col gap-2"></div>
+
+  <!-- ===================================================================== -->
+  <!-- CABEÇALHO SUPERIOR (HEADER)                                           -->
+  <!-- ===================================================================== -->
+  <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b-2 border-amber-100 shadow-sm">
+    <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
+      <!-- Logo e Nome do App -->
+      <button onclick="switchTab('inicio'); clearCategoryFilter();" class="flex items-center gap-2.5 text-left group focus:outline-none">
+        <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-sky-400 via-blue-500 to-indigo-600 flex items-center justify-center shadow-md border-b-4 border-indigo-800 group-hover:scale-105 transition-transform">
+          <!-- Ícone SVG de TV Amigável -->
+          <svg class="w-7 h-7 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="7" width="20" height="15" rx="4" fill="rgba(255,255,255,0.2)"/>
+            <polyline points="17 2 12 7 7 2"/>
+            <polygon points="10 11 16 14.5 10 18 10 11" fill="currentColor" stroke="none"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="font-kid text-xl sm:text-2xl font-bold tracking-tight text-slate-800 leading-none">
+            Kids TV <span class="text-sky-600">Segura</span>
+          </h1>
+          <span class="text-[11px] sm:text-xs font-bold text-slate-400 tracking-wide">100% Curado pelos Pais</span>
+        </div>
+      </button>
+
+      <!-- Indicadores à direita: Modo Descoberta + Avatar da Criança -->
+      <div class="flex items-center gap-2 sm:gap-3">
+        <!-- Badge Modo Descoberta -->
+        <div id="discovery-badge" onclick="showDiscoveryInfo()" role="button" tabindex="0"
+             class="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border-2 border-emerald-200 text-emerald-700 text-xs font-extrabold shadow-sm hover:bg-emerald-100 transition-colors">
+          <span class="relative flex h-2.5 w-2.5">
+            <span id="discovery-ping" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span id="discovery-dot" class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+          </span>
+          <span class="hidden sm:inline">Modo Descoberta</span>
+          <span class="sm:hidden">Descoberta</span>
+        </div>
+
+        <!-- Avatar da Criança -->
+        <div class="flex items-center gap-2 bg-amber-50 border-2 border-amber-200 px-2.5 py-1 rounded-full">
+          <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-400 to-orange-400 flex items-center justify-center text-white font-kid font-bold text-base shadow-inner">
+            🧒
+          </div>
+          <div class="hidden md:block leading-tight pr-1">
+            <p class="text-xs font-extrabold text-slate-700">Pequeno Explorador</p>
+            <p class="text-[10px] font-bold text-amber-600">Pré-Escola (4 anos)</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===================================================================== -->
+  <!-- CONTEÚDO PRINCIPAL (VIEWS DINÂMICAS)                                  -->
+  <!-- ===================================================================== -->
+  <main class="flex-1 max-w-5xl w-full mx-auto px-4 pt-5">
+
+    <!-- =================================================================== -->
+    <!-- TELA 1: INÍCIO (4 BLOCOS + NOVOS E RECOMENDADOS + FEED EQUILIBRADO) -->
+    <!-- =================================================================== -->
+    <section id="view-inicio" class="space-y-6">
+
+      <!-- Grade dos 4 Pilares Principais (Blocos Grandes e Coloridos) -->
+      <div>
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="font-kid text-lg sm:text-xl font-bold text-slate-700 flex items-center gap-2">
+            <span>Escolha uma Aventura</span>
+          </h2>
+          <button id="btn-show-all" onclick="clearCategoryFilter()"
+                  class="hidden btn-tactile px-4 py-1.5 rounded-full bg-slate-800 text-white font-kid text-sm font-semibold shadow-kid flex items-center gap-1.5">
+            <span>✕</span> Mostrar Todos
+          </button>
+        </div>
+
+        <div id="category-blocks-grid" class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <!-- Renderizado dinamicamente via JS para manter sincronia com o estado -->
+        </div>
+      </div>
+
+      <!-- Faixa Especial: Novos e Recomendados (Garante variedade de TODOS os canais) -->
+      <div id="discovery-strip-section" class="bg-white rounded-3xl p-4 sm:p-5 border-2 border-sky-100 shadow-sm">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="text-2xl">✨</span>
+            <div>
+              <h2 class="font-kid text-lg sm:text-xl font-bold text-slate-800 leading-tight">
+                Novos e Recomendados
+              </h2>
+              <p class="text-xs font-bold text-slate-500">
+                Todos os canais aprovados têm vez aqui!
+              </p>
+            </div>
+          </div>
+          <span class="text-xs font-extrabold px-3 py-1 rounded-full bg-sky-100 text-sky-700">
+            Rotação Justa Ativa
+          </span>
+        </div>
+
+        <!-- Carrossel horizontal com 1 vídeo de destaque de cada canal ativo -->
+        <div id="discovery-carousel" class="flex gap-3.5 overflow-x-auto no-scrollbar pb-2 pt-1">
+          <!-- Cards gerados via JS -->
+        </div>
+      </div>
+
+      <!-- Feed Principal de Vídeos Curados -->
+      <div>
+        <div class="flex items-center justify-between mb-3">
+          <h2 id="feed-section-title" class="font-kid text-lg sm:text-xl font-bold text-slate-800 flex items-center gap-2">
+            <span>🎬 Vídeos para Assistir</span>
+          </h2>
+          <span id="feed-count-badge" class="text-xs font-extrabold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
+            0 vídeos
+          </span>
+        </div>
+
+        <div id="main-video-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+          <!-- Cards de vídeos gerados via JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- TELA 2: CANAIS APROVADOS (SEGMENTADOS PELOS 4 BLOCOS)               -->
+    <!-- =================================================================== -->
+    <section id="view-canais" class="hidden space-y-6">
+      <div class="bg-white rounded-3xl p-5 border-2 border-indigo-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 class="font-kid text-2xl font-bold text-slate-800 flex items-center gap-2">
+            <span>📺 Canais Aprovados</span>
+          </h2>
+          <p class="text-sm font-semibold text-slate-500">
+            Toque em um canal para ver apenas os vídeos dele.
+          </p>
+        </div>
+        <button id="btn-clear-channel-filter" onclick="clearChannelFilter()"
+                class="hidden btn-tactile px-4 py-2.5 rounded-2xl bg-indigo-600 text-white font-kid font-semibold text-sm shadow-kid">
+          Ver Todos os Canais
+        </button>
+      </div>
+
+      <!-- Canais agrupados pelos 4 blocos -->
+      <div id="channels-segmented-container" class="space-y-6">
+        <!-- Renderizado via JS -->
+      </div>
+
+      <!-- Vídeos do canal selecionado (aparece ao clicar em um canal) -->
+      <div id="selected-channel-videos-wrapper" class="hidden space-y-3 pt-2">
+        <div class="flex items-center justify-between">
+          <h3 id="selected-channel-title" class="font-kid text-xl font-bold text-slate-800"></h3>
+          <button onclick="clearChannelFilter()" class="text-sm font-extrabold text-indigo-600 hover:underline">
+            ← Voltar aos canais
+          </button>
+        </div>
+        <div id="selected-channel-videos-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- TELA 3: FAVORITOS DA CRIANÇA                                        -->
+    <!-- =================================================================== -->
+    <section id="view-favoritos" class="hidden space-y-5">
+      <div class="bg-gradient-to-r from-rose-500 to-pink-500 rounded-3xl p-5 text-white shadow-kid flex items-center justify-between">
+        <div>
+          <h2 class="font-kid text-2xl sm:text-3xl font-bold flex items-center gap-2">
+            <span>❤️ Meus Favoritos</span>
+          </h2>
+          <p class="text-sm font-bold text-rose-100 mt-0.5">
+            Os vídeos que você mais gostou ficam guardados aqui!
+          </p>
+        </div>
+        <div class="text-4xl sm:text-5xl animate-float">⭐</div>
+      </div>
+
+      <div id="favorites-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+        <!-- Renderizado via JS -->
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- TELA 4: PAINEL DOS PAIS (CONTROLE PARENTAL COM PIN)                 -->
+    <!-- =================================================================== -->
+    <section id="view-pais" class="hidden space-y-6">
+
+      <!-- Sub-tela A: Bloqueio por PIN -->
+      <div id="parent-pin-screen" class="max-w-md mx-auto bg-white rounded-3xl p-6 sm:p-8 border-2 border-slate-200 shadow-kid-lg text-center">
+        <div class="w-16 h-16 mx-auto mb-3 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center text-3xl shadow-inner">
+          🔒
+        </div>
+        <h2 id="pin-title" class="font-kid text-2xl font-bold text-slate-800">Área Exclusiva dos Pais</h2>
+        <p id="pin-subtitle" class="text-sm font-semibold text-slate-500 mt-1">
+          Digite a senha de 4 dígitos para gerenciar canais e regras.
+        </p>
+
+        <!-- Bolinhas indicadoras do PIN -->
+        <div id="pin-dots" class="flex justify-center gap-4 my-6">
+          <div class="pin-dot w-5 h-5 rounded-full border-2 border-slate-300 bg-slate-100 transition-all"></div>
+          <div class="pin-dot w-5 h-5 rounded-full border-2 border-slate-300 bg-slate-100 transition-all"></div>
+          <div class="pin-dot w-5 h-5 rounded-full border-2 border-slate-300 bg-slate-100 transition-all"></div>
+          <div class="pin-dot w-5 h-5 rounded-full border-2 border-slate-300 bg-slate-100 transition-all"></div>
+        </div>
+
+        <!-- Teclado Numérico Grande -->
+        <div class="grid grid-cols-3 gap-3 max-w-xs mx-auto">
+          <button onclick="enterPinDigit('1')" class="btn-tactile h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 font-kid text-2xl font-bold text-slate-800 shadow-kid">1</button>
+          <button onclick="enterPinDigit('2')" class="btn-tactile h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 font-kid text-2xl font-bold text-slate-800 shadow-kid">2</button>
+          <button onclick="enterPinDigit('3')" class="btn-tactile h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 font-kid text-2xl font-bold text-slate-800 shadow-kid">3</button>
+          <button onclick="enterPinDigit('4')" class="btn-tactile h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 font-kid text-2xl font-bold text-slate-800 shadow-kid">4</button>
+          <button onclick="enterPinDigit('5')" class="btn-tactile h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 font-kid text-2xl font-bold text-slate-800 shadow-kid">5</button>
+          <button onclick="enterPinDigit('6')" class="btn-tactile h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 font-kid text-2xl font-bold text-slate-800 shadow-kid">6</button>
+          <button onclick="enterPinDigit('7')" class="btn-tactile h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 font-kid text-2xl font-bold text-slate-800 shadow-kid">7</button>
+          <button onclick="enterPinDigit('8')" class="btn-tactile h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 font-kid text-2xl font-bold text-slate-800 shadow-kid">8</button>
+          <button onclick="enterPinDigit('9')" class="btn-tactile h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 font-kid text-2xl font-bold text-slate-800 shadow-kid">9</button>
+          <button onclick="clearPin()" class="btn-tactile h-14 rounded-2xl bg-rose-100 hover:bg-rose-200 font-kid text-sm font-bold text-rose-700 shadow-kid">Limpar</button>
+          <button onclick="enterPinDigit('0')" class="btn-tactile h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 font-kid text-2xl font-bold text-slate-800 shadow-kid">0</button>
+          <button onclick="backspacePin()" class="btn-tactile h-14 rounded-2xl bg-slate-200 hover:bg-slate-300 font-kid text-lg font-bold text-slate-700 shadow-kid">⌫</button>
+        </div>
+      </div>
+
+      <!-- Sub-tela B: Painel Desbloqueado dos Pais -->
+      <div id="parent-dashboard" class="hidden space-y-6">
+        <!-- Cabeçalho do Painel Parental -->
+        <div class="bg-slate-900 text-white rounded-3xl p-5 sm:p-6 flex flex-wrap items-center justify-between gap-4 shadow-kid">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-2xl">
+              🛡️
+            </div>
+            <div>
+              <h2 class="font-kid text-xl sm:text-2xl font-bold">Controle Parental Ativo</h2>
+              <p class="text-xs sm:text-sm text-slate-300 font-semibold">
+                Gerencie os 4 pilares educativos e a rotação justa de canais.
+              </p>
+            </div>
+          </div>
+          <button onclick="lockParentPanel()" class="btn-tactile px-4 py-2.5 rounded-2xl bg-slate-700 hover:bg-slate-600 text-white font-kid text-sm font-semibold flex items-center gap-2">
+            <span>🔒</span> Bloquear Painel
+          </button>
+        </div>
+
+        <!-- Card 1: Regra Anti-Bolha (Rotação Equilibrada de Canais) -->
+        <div class="bg-white rounded-3xl p-5 border-2 border-emerald-200 shadow-sm space-y-4">
+          <div class="flex items-center justify-between gap-4">
+            <div class="flex items-start gap-3">
+              <div class="w-11 h-11 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-2xl shrink-0">
+                ⚖️
+              </div>
+              <div>
+                <h3 class="font-kid text-lg font-bold text-slate-800">Rotação Equilibrada de Canais</h3>
+                <p class="text-xs sm:text-sm font-semibold text-slate-500">
+                  Impede que o algoritmo mostre só o canal mais assistido. Garante que canais novos e educativos apareçam sempre no topo.
+                </p>
+              </div>
+            </div>
+
+            <!-- Toggle Switch -->
+            <button id="toggle-fair-rotation" onclick="toggleFairRotation()" role="switch" aria-checked="true"
+                    class="w-16 h-9 rounded-full bg-emerald-500 p-1 transition-colors shrink-0 flex items-center justify-end cursor-pointer">
+              <span class="w-7 h-7 rounded-full bg-white shadow-md block transition-transform"></span>
+            </button>
+          </div>
+
+          <!-- Resumo visual de canais ativos por pilar -->
+          <div id="pillars-balance-summary" class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2 border-t border-slate-100">
+            <!-- Preenchido via JS -->
+          </div>
+        </div>
+
+        <!-- Card 2: Adicionar Novo Canal Aprovado -->
+        <div class="bg-white rounded-3xl p-5 border-2 border-sky-200 shadow-sm">
+          <h3 class="font-kid text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
+            <span>➕</span> Aprovar Novo Canal do YouTube
+          </h3>
+          <form onsubmit="handleAddChannel(event)" class="grid grid-cols-1 sm:grid-cols-12 gap-3">
+            <div class="sm:col-span-5">
+              <label class="block text-xs font-extrabold text-slate-600 mb-1">Nome do Canal</label>
+              <input id="new-channel-name" type="text" required maxlength="40"placeholder="Ex: Mundo Bita, Turma da Bíblia..."
+                     class="w-full px-4 py-3 rounded-2xl border-2 border-slate-200 focus:border-sky-500 focus:outline-none font-bold text-sm text-slate-800">
+            </div>
+            <div class="sm:col-span-4">
+              <label class="block text-xs font-extrabold text-slate-600 mb-1">Bloco / Pilar</label>
+              <select id="new-channel-category"
+                      class="w-full px-4 py-3 rounded-2xl border-2 border-slate-200 focus:border-sky-500 focus:outline-none font-bold text-sm text-slate-800 bg-white">
+                <option value="entretenimento">🎨 Entretenimento</option>
+                <option value="cristao">✝️ Infantil Cristão</option>
+                <option value="bilingue">🔤 Português & Bilíngue</option>
+                <option value="matematica">🔢 Matemática</option>
+              </select>
+            </div>
+            <div class="sm:col-span-3 flex items-end">
+              <button type="submit"
+                      class="w-full btn-tactile py-3 px-4 rounded-2xl bg-sky-600 hover:bg-sky-700 text-white font-kid font-bold text-sm shadow-kid">
+                Adicionar Canal
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Card: Segurança e dados -->
+        <div class="bg-white rounded-3xl p-5 border-2 border-amber-200 shadow-sm space-y-3">
+          <h3 class="font-kid text-lg font-bold text-slate-800 flex items-center gap-2">
+            <span>🔑</span> Segurança e Dados
+          </h3>
+          <p class="text-xs sm:text-sm font-semibold text-slate-500">
+            Os canais, favoritos e configurações ficam salvos só neste aparelho.
+          </p>
+          <div class="flex flex-wrap gap-2.5">
+            <button onclick="startChangePin()" class="btn-tactile px-4 py-2.5 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-900 font-kid font-bold text-sm shadow-kid">
+              Trocar PIN
+            </button>
+            <button onclick="resetAppData()" class="btn-tactile px-4 py-2.5 rounded-2xl bg-rose-100 hover:bg-rose-200 text-rose-700 font-kid font-bold text-sm shadow-kid">
+              Apagar dados e recomeçar
+            </button>
+          </div>
+        </div>
+
+        <!-- Card 3: Lista de Canais Aprovados (Ativar/Pausar) -->
+        <div class="bg-white rounded-3xl p-5 border-2 border-slate-200 shadow-sm space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="font-kid text-lg font-bold text-slate-800 flex items-center gap-2">
+              <span>📋</span> Canais Cadastrados (<span id="parent-channels-count">0</span>)
+            </h3>
+            <span class="text-xs font-bold text-slate-400">Alterações refletem na hora</span>
+          </div>
+
+          <div id="parent-channels-list" class="divide-y divide-slate-100">
+            <!-- Lista gerada via JS -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ===================================================================== -->
+  <!-- BARRA DE NAVEGAÇÃO INFERIOR (BOTÕES GRANDES PARA MÃOS PEQUENAS)        -->
+  <!-- ===================================================================== -->
+  <nav class="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t-2 border-slate-200 shadow-nav">
+    <div class="max-w-3xl mx-auto px-2 py-2 grid grid-cols-4 gap-1.5 sm:gap-3">
+      <!-- Botão Início -->
+      <button onclick="switchTab('inicio')" data-tab="inicio"
+              class="nav-btn btn-tactile flex flex-col items-center justify-center py-2 px-1 rounded-2xl bg-sky-100 text-sky-700 font-kid font-bold transition-colors">
+        <span class="text-2xl leading-none mb-1">🏠</span>
+        <span class="text-xs sm:text-sm">Início</span>
+      </button>
+
+      <!-- Botão Canais -->
+      <button onclick="switchTab('canais')" data-tab="canais"
+              class="nav-btn btn-tactile flex flex-col items-center justify-center py-2 px-1 rounded-2xl text-slate-500 hover:bg-slate-100 font-kid font-bold transition-colors">
+        <span class="text-2xl leading-none mb-1">📺</span>
+        <span class="text-xs sm:text-sm">Canais</span>
+      </button>
+
+      <!-- Botão Favoritos -->
+      <button onclick="switchTab('favoritos')" data-tab="favoritos"
+              class="nav-btn btn-tactile relative flex flex-col items-center justify-center py-2 px-1 rounded-2xl text-slate-500 hover:bg-slate-100 font-kid font-bold transition-colors">
+        <span class="text-2xl leading-none mb-1">❤️</span>
+        <span class="text-xs sm:text-sm">Favoritos</span>
+        <span id="nav-fav-count" class="hidden absolute top-1.5 right-4 sm:right-8 bg-rose-500 text-white text-[10px] font-extrabold px-1.5 py-px rounded-full">0</span>
+      </button>
+
+      <!-- Botão Pais -->
+      <button onclick="switchTab('pais')" data-tab="pais"
+              class="nav-btn btn-tactile flex flex-col items-center justify-center py-2 px-1 rounded-2xl text-slate-500 hover:bg-slate-100 font-kid font-bold transition-colors">
+        <span class="text-2xl leading-none mb-1">🔐</span>
+        <span class="text-xs sm:text-sm">Pais</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL PLAYER LIVRE DE DISTRAÇÕES (100% SEGURO PARA A CRIANÇA)         -->
+  <!-- ===================================================================== -->
+  <div id="video-player-modal" class="fixed inset-0 z-50 hidden bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-6">
+    <div class="bg-white w-full max-w-3xl rounded-3xl overflow-hidden shadow-2xl border-4 border-sky-400 flex flex-col">
+
+      <!-- Barra Superior do Player -->
+      <div class="bg-slate-900 text-white px-4 py-3 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <span id="player-channel-avatar" class="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center text-xl shrink-0">📺</span>
+          <div class="truncate">
+            <p id="player-channel-name" class="text-xs font-extrabold text-sky-300 truncate">Canal Aprovado</p>
+            <h3 id="player-video-title" class="font-kid text-base sm:text-lg font-bold truncate">Título do Vídeo</h3>
+          </div>
+        </div>
+        <span id="player-category-pill" class="hidden sm:inline-block px-3 py-1 rounded-full text-xs font-extrabold bg-white/15 text-white shrink-0">
+          Categoria
+        </span>
+      </div>
+
+      <!-- Palco Simulado do Vídeo (Zero recomendações externas!) -->
+      <div id="player-stage" class="playing-stage relative aspect-video w-full flex flex-col items-center justify-center p-6 text-center overflow-hidden bg-gradient-to-br from-sky-400 to-indigo-600">
+        <!-- Elementos decorativos de fundo -->
+        <div class="absolute inset-0 opacity-20 pointer-events-none flex items-center justify-around text-7xl">
+          <span>☁️</span><span>⭐</span><span>🎈</span>
+        </div>
+
+        <!-- Personagem/Ilustração animada do vídeo -->
+        <div id="player-stage-emoji" class="stage-actor text-7xl sm:text-8xl mb-3 drop-shadow-lg select-none">
+          🚀
+        </div>
+
+        <p id="player-stage-subtitle" class="font-kid text-white text-xl sm:text-2xl font-bold drop-shadow max-w-lg">
+          Reproduzindo vídeo seguro...
+        </p>
+
+        <!-- Aviso de ambiente protegido -->
+        <div class="mt-3 px-3 py-1 rounded-full bg-black/25 text-white/95 text-xs font-bold flex items-center gap-1.5">
+          <span>🛡️</span> Sem anúncios e sem vídeos aleatórios
+        </div>
+
+        <!-- Overlay de Fim de Vídeo -->
+        <div id="player-ended-overlay" class="hidden absolute inset-0 bg-slate-900/85 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-white">
+          <div class="text-6xl mb-2">🎉</div>
+          <h4 class="font-kid text-2xl sm:text-3xl font-bold mb-1">Muito bem! Vídeo concluído!</h4>
+          <p class="text-sm text-slate-300 font-semibold mb-5 max-w-md">
+            Que tal explorar outro canal aprovado pelos seus pais agora?
+          </p>
+          <div class="flex flex-wrap justify-center gap-3">
+            <button onclick="replayCurrentVideo()" class="btn-tactile px-5 py-3 rounded-2xl bg-sky-500 hover:bg-sky-400 text-white font-kid font-bold text-base shadow-kid">
+              🔄 Ver de Novo
+            </button>
+            <button onclick="closeVideoPlayer()" class="btn-tactile px-6 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-white font-kid font-bold text-base shadow-kid">
+              🏠 Escolher Outro Vídeo
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Barra de Progresso -->
+      <div class="bg-slate-100 px-4 pt-3 pb-1">
+        <div class="w-full h-3.5 bg-slate-300 rounded-full overflow-hidden cursor-pointer" onclick="seekVideo(event)">
+          <div id="player-progress-bar" class="h-full bg-gradient-to-r from-sky-500 to-emerald-500 rounded-full transition-all duration-200" style="width: 0%"></div>
+        </div>
+        <div class="flex justify-between text-xs font-extrabold text-slate-500 mt-1">
+          <span id="player-time-current">0:00</span>
+          <span id="player-time-total">2:30</span>
+        </div>
+      </div>
+
+      <!-- Controles Grandes para Criança -->
+      <div class="p-4 bg-white flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-2.5">
+          <button id="player-play-pause-btn" onclick="togglePlayPause()"
+                  class="btn-tactile px-5 py-3 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-900 font-kid font-bold text-base shadow-kid flex items-center gap-2">
+            <span id="player-play-icon">⏸️</span>
+            <span id="player-play-label">Pausar</span>
+          </button>
+
+          <button id="player-fav-btn" onclick="toggleFavoriteCurrentVideo()"
+                  class="btn-tactile px-4 py-3 rounded-2xl bg-rose-50 border-2 border-rose-200 text-rose-600 font-kid font-bold text-base shadow-kid flex items-center gap-1.5">
+            <span id="player-fav-icon">🤍</span>
+            <span class="hidden sm:inline">Favorito</span>
+          </button>
+        </div>
+
+        <!-- Botão Grande VOLTAR -->
+        <button onclick="closeVideoPlayer()"
+                class="btn-tactile px-6 py-3 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-kid font-bold text-base sm:text-lg shadow-kid flex items-center gap-2">
+          <span>⬅️</span> Voltar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- LÓGICA DA APLICAÇÃO (JAVASCRIPT)                                      -->
+  <!-- ===================================================================== -->
+  <script>
+    // -----------------------------------------------------------------------
+    // 1. DEFINIÇÃO DOS 4 PILARES EDUCATIVOS E DE ENTRETENIMENTO
+    // -----------------------------------------------------------------------
+    const CATEGORIES = {
+      entretenimento: {
+        id: 'entretenimento',
+        title: 'Entretenimento',
+        subtitle: 'Desenhos e Diversão',
+        gradient: 'from-sky-400 via-blue-500 to-indigo-600',
+        border: 'border-indigo-700',
+        badgeBg: 'bg-sky-100 text-sky-800',
+        icon: '🚀',
+        svgArt: `
+          <svg class="w-12 h-12 sm:w-14 sm:h-14 drop-shadow" viewBox="0 0 64 64" fill="none">
+            <circle cx="32" cy="32" r="28" fill="rgba(255,255,255,0.2)"/>
+            <path d="M38 14C44 14 50 20 50 26C50 35 37 46 27 49L15 37C18 27 29 14 38 14Z" fill="#FFF"/>
+            <circle cx="37" cy="27" r="5" fill="#0284C7"/>
+            <path d="M15 37L10 47L20 42" fill="#FBBF24"/>
+            <path d="M27 49L22 54L17 44" fill="#F97316"/>
+          </svg>`
+      },
+      cristao: {
+        id: 'cristao',
+        title: 'Infantil Cristão',
+        subtitle: 'Histórias e Louvores',
+        gradient: 'from-purple-500 via-violet-600 to-amber-500',
+        border: 'border-purple-800',
+        badgeBg: 'bg-purple-100 text-purple-800',
+        icon: '🌈',
+        svgArt: `
+          <svg class="w-12 h-12 sm:w-14 sm:h-14 drop-shadow" viewBox="0 0 64 64" fill="none">
+            <circle cx="32" cy="32" r="28" fill="rgba(255,255,255,0.2)"/>
+            <path d="M14 40C14 28 22 20 32 20C42 20 50 28 50 40" stroke="#FDE047" stroke-width="5" stroke-linecap="round"/>
+            <path d="M20 40C20 32 25 26 32 26C39 26 44 32 44 40" stroke="#F472B6" stroke-width="5" stroke-linecap="round"/>
+            <path d="M26 40C26 35 28.5 32 32 32C35.5 32 38 35 38 40" stroke="#38BDF8" stroke-width="5" stroke-linecap="round"/>
+            <path d="M32 10L34 15L39 15L35 18L36.5 23L32 20L27.5 23L29 18L25 15L30 15L32 10Z" fill="#FFF"/>
+          </svg>`
+      },
+      bilingue: {
+        id: 'bilingue',
+        title: 'Português & Bilíngue',
+        subtitle: 'Alfabetização e Inglês',
+        gradient: 'from-emerald-400 via-teal-500 to-cyan-600',
+        border: 'border-teal-800',
+        badgeBg: 'bg-emerald-100 text-emerald-800',
+        icon: '🔤',
+        svgArt: `
+          <svg class="w-12 h-12 sm:w-14 sm:h-14 drop-shadow" viewBox="0 0 64 64" fill="none">
+            <circle cx="32" cy="32" r="28" fill="rgba(255,255,255,0.2)"/>
+            <rect x="14" y="18" width="17" height="17" rx="4" fill="#FEF08A"/>
+            <text x="22.5" y="31" text-anchor="middle" fill="#0F766E" font-family="Fredoka, sans-serif" font-weight="bold" font-size="13">A</text>
+            <rect x="33" y="22" width="17" height="17" rx="4" fill="#FFFFFF"/>
+            <text x="41.5" y="35" text-anchor="middle" fill="#0284C7" font-family="Fredoka, sans-serif" font-weight="bold" font-size="13">B</text>
+            <rect x="23" y="35" width="18" height="16" rx="4" fill="#FDBA74"/>
+            <text x="32" y="47" text-anchor="middle" fill="#9A3412" font-family="Fredoka, sans-serif" font-weight="bold" font-size="12">Hi!</text>
+          </svg>`
+      },
+      matematica: {
+        id: 'matematica',
+        title: 'Matemática',
+        subtitle: 'Números e Lógica',
+        gradient: 'from-amber-400 via-orange-500 to-red-500',
+        border: 'border-orange-800',
+        badgeBg: 'bg-amber-100 text-amber-800',
+        icon: '🔢',
+        svgArt: `
+          <svg class="w-12 h-12 sm:w-14 sm:h-14 drop-shadow" viewBox="0 0 64 64" fill="none">
+            <circle cx="32" cy="32" r="28" fill="rgba(255,255,255,0.2)"/>
+            <rect x="14" y="16" width="16" height="16" rx="4" fill="#FFF"/>
+            <text x="22" y="28" text-anchor="middle" fill="#EA580C" font-family="Fredoka, sans-serif" font-weight="bold" font-size="13">1</text>
+            <rect x="34" y="16" width="16" height="16" rx="4" fill="#FEF08A"/>
+            <text x="42" y="28" text-anchor="middle" fill="#B45309" font-family="Fredoka, sans-serif" font-weight="bold" font-size="13">2</text>
+            <rect x="14" y="34" width="16" height="16" rx="4" fill="#BAE6FD"/>
+            <text x="22" y="46" text-anchor="middle" fill="#0369A1" font-family="Fredoka, sans-serif" font-weight="bold" font-size="14">+</text>
+            <rect x="34" y="34" width="16" height="16" rx="4" fill="#BBF7D0"/>
+            <text x="42" y="46" text-anchor="middle" fill="#15803D" font-family="Fredoka, sans-serif" font-weight="bold" font-size="13">3</text>
+          </svg>`
+      }
+    };
+
+    // -----------------------------------------------------------------------
+    // 2. ESTADO INICIAL DO APLICATIVO (CANAIS APROVADOS E VÍDEOS CURADOS)
+    // -----------------------------------------------------------------------
+    const appState = {
+      activeTab: 'inicio',
+      selectedCategory: null,      // null = todos os 4 blocos
+      selectedChannelId: null,     // filtro na aba Canais
+      fairRotationEnabled: true,   // evita bolha de um único canal
+      parentUnlocked: false,
+      pinBuffer: '',
+      parentPin: null,             // definido pelos pais no primeiro acesso
+      pinMode: 'enter',            // 'enter' | 'create' | 'confirm'
+      pinDraft: '',
+
+      // Canais pré-aprovados pelos pais nos 4 pilares
+      channels: [
+        { id: 'ch-1', name: 'Turma do Explorador', category: 'entretenimento', avatar: '🦕', active: true, watchCount: 5 },
+        { id: 'ch-2', name: 'Pequenos Aventureiros', category: 'entretenimento', avatar: '🚂', active: true, watchCount: 1 },
+        { id: 'ch-3', name: 'Arca da Alegria Kids', category: 'cristao', avatar: '🕊️', active: true, watchCount: 2 },
+        { id: 'ch-4', name: 'Cantinho do Louvor', category: 'cristao', avatar: '🎶', active: true, watchCount: 0 },
+        { id: 'ch-5', name: 'ABC Mágico & Inglês', category: 'bilingue', avatar: '🦊', active: true, watchCount: 3 },
+        { id: 'ch-6', name: 'Brincando de Ler', category: 'bilingue', avatar: '📚', active: true, watchCount: 0 },
+        { id: 'ch-7', name: 'Planeta dos Números', category: 'matematica', avatar: '🤖', active: true, watchCount: 2 },
+        { id: 'ch-8', name: 'Formas e Cores Kids', category: 'matematica', avatar: '🧩', active: true, watchCount: 0 }
+      ],
+
+      // Biblioteca curada de vídeos (cada canal possui vídeos dedicados)
+      videos: [
+        {
+          id: 'vid-1',
+          channelId: 'ch-1',
+          category: 'entretenimento',
+          title: 'A Viagem do Trem Colorido na Floresta',
+          duration: '3:15',
+          durationSec: 195,
+          emoji: '🚂',
+          bgGradient: 'from-sky-400 to-blue-600',
+          isNew: false
+        },
+        {
+          id: 'vid-2',
+          channelId: 'ch-2',
+          category: 'entretenimento',
+          title: 'O Dinossauro Amigo e os Balões',
+          duration: '2:45',
+          durationSec: 165,
+          emoji: '🦕',
+          bgGradient: 'from-cyan-400 to-indigo-600',
+          isNew: true
+        },
+        {
+          id: 'vid-3',
+          channelId: 'ch-3',
+          category: 'cristao',
+          title: 'A Arca de Noé e os Bichinhos em Pares',
+          duration: '4:10',
+          durationSec: 250,
+          emoji: '🦁',
+          bgGradient: 'from-purple-500 to-amber-500',
+          isNew: false
+        },
+        {
+          id: 'vid-4',
+          channelId: 'ch-4',
+          category: 'cristao',
+          title: 'Canção: Deus Cuidou de Mim Hoje',
+          duration: '2:20',
+          durationSec: 140,
+          emoji: '🌟',
+          bgGradient: 'from-violet-600 to-fuchsia-500',
+          isNew: true
+        },
+        {
+          id: 'vid-5',
+          channelId: 'ch-5',
+          category: 'bilingue',
+          title: 'Vogais A-E-I-O-U e Animais em Inglês (Cat & Dog)',
+          duration: '3:40',
+          durationSec: 220,
+          emoji: '🦊',
+          bgGradient: 'from-emerald-400 to-teal-600',
+          isNew: false
+        },
+        {
+          id: 'vid-6',
+          channelId: 'ch-6',
+          category: 'bilingue',
+          title: 'Juntando as Sílabas: BA - BE - BI - BO - BU',
+          duration: '3:05',
+          durationSec: 185,
+          emoji: '📖',
+          bgGradient: 'from-teal-400 to-cyan-600',
+          isNew: true
+        },
+        {
+          id: 'vid-7',
+          channelId: 'ch-7',
+          category: 'matematica',
+          title: 'Contando Foguetes de 1 até 10!',
+          duration: '2:50',
+          durationSec: 170,
+          emoji: '🚀',
+          bgGradient: 'from-amber-400 to-orange-600',
+          isNew: false
+        },
+        {
+          id: 'vid-8',
+          channelId: 'ch-8',
+          category: 'matematica',
+          title: 'Círculo, Quadrado e Triângulo no Parque',
+          duration: '3:00',
+          durationSec: 180,
+          emoji: '🔺',
+          bgGradient: 'from-orange-400 to-rose-500',
+          isNew: true
+        },
+        {
+          id: 'vid-9',
+          channelId: 'ch-5',
+          category: 'bilingue',
+          title: 'Cores em Português e Inglês: Red, Blue, Yellow!',
+          duration: '2:35',
+          durationSec: 155,
+          emoji: '🎨',
+          bgGradient: 'from-green-400 to-emerald-600',
+          isNew: true
+        },
+        {
+          id: 'vid-10',
+          channelId: 'ch-7',
+          category: 'matematica',
+          title: 'Somando Maçãs com o Robô Tito',
+          duration: '3:20',
+          durationSec: 200,
+          emoji: '🍎',
+          bgGradient: 'from-yellow-400 to-orange-500',
+          isNew: true
+        }
+      ],
+
+      favorites: ['vid-3', 'vid-5'], // Vídeos favoritados inicialmente
+
+      // Estado do player modal
+      player: {
+        currentVideoId: null,
+        isPlaying: false,
+        progressPercent: 0,
+        intervalId: null
+      }
+    };
+
+    // -----------------------------------------------------------------------
+    // 2.1 SALVAR NO APARELHO (localStorage) - dados ficam só neste celular
+    // -----------------------------------------------------------------------
+    const STORAGE_KEY = 'kidstv-segura.v1';
+    const PERSISTED_FIELDS = ['channels', 'videos', 'favorites', 'fairRotationEnabled', 'parentPin'];
+
+    function saveState() {
+      try {
+        const data = {};
+        PERSISTED_FIELDS.forEach(k => { data[k] = appState[k]; });
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      } catch (e) {
+        // Navegador sem armazenamento (ex.: aba anônima): o app segue funcionando sem salvar
+      }
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        if (Array.isArray(data.channels)) appState.channels = data.channels;
+        if (Array.isArray(data.videos)) appState.videos = data.videos;
+        if (Array.isArray(data.favorites)) appState.favorites = data.favorites;
+        if (typeof data.fairRotationEnabled === 'boolean') appState.fairRotationEnabled = data.fairRotationEnabled;
+        if (typeof data.parentPin === 'string' && /^\d{4}$/.test(data.parentPin)) appState.parentPin = data.parentPin;
+      } catch (e) {
+        // Dados corrompidos: ignora e usa o estado inicial
+      }
+    }
+
+    function resetAppData() {
+      if (!confirm('Apagar canais, favoritos e PIN deste aparelho e voltar ao início?')) return;
+      try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+      location.reload();
+    }
+
+    // -----------------------------------------------------------------------
+    // 3. FEEDBACK SONORO SUAVE (WEB AUDIO API - SEM ARQUIVOS EXTERNOS)
+    // -----------------------------------------------------------------------
+    function playGentleChime(type = 'tap') {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        const now = ctx.currentTime;
+        if (type === 'tap') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(520, now);
+          osc.frequency.exponentialRampToValueAtTime(680, now + 0.08);
+          gain.gain.setValueAtTime(0.06, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+          osc.start(now);
+          osc.stop(now + 0.09);
+        } else if (type === 'fav') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(587.33, now);
+          osc.frequency.setValueAtTime(880, now + 0.09);
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+          osc.start(now);
+          osc.stop(now + 0.22);
+        } else if (type === 'unlock') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(440, now);
+          osc.frequency.setValueAtTime(554.37, now + 0.08);
+          osc.frequency.setValueAtTime(659.25, now + 0.16);
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+          osc.start(now);
+          osc.stop(now + 0.3);
+        }
+      } catch (e) {
+        // Ignora silenciosamente se o navegador bloquear áudio automático
+      }
+    }
+
+    // -----------------------------------------------------------------------
+    // 4. NOTIFICAÇÕES TOAST AMIGÁVEIS (SUBSTITUI ALERT)
+    // -----------------------------------------------------------------------
+    function showToast(message, tone = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      const styles = {
+        info: 'bg-slate-800 text-white border-slate-700',
+        success: 'bg-emerald-600 text-white border-emerald-400',
+        warn: 'bg-amber-500 text-slate-950 border-amber-300'
+      };
+      toast.className = `${styles[tone] || styles.info} border-2 px-4 py-3 rounded-2xl shadow-lg font-bold text-sm text-center transition-all duration-300 transform translate-y-0 opacity-100`;
+      toast.textContent = message;
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', '-translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 2800);
+    }
+
+    function showDiscoveryInfo() {
+      playGentleChime('tap');
+      if (appState.fairRotationEnabled) {
+        showToast('✨ Modo Descoberta Ativo: todos os canais aprovados aparecem com igual destaque!', 'success');
+      } else {
+        showToast('ℹ️ Rotação equilibrada pausada pelos pais no painel de controle.', 'warn');
+      }
+    }
+
+    // -----------------------------------------------------------------------
+    // 5. ALGORITMO ANTI-BOLHA: ROTAÇÃO JUSTA ENTRE TODOS OS CANAIS APROVADOS
+    // -----------------------------------------------------------------------
+    function getActiveChannels() {
+      return appState.channels.filter(ch => ch.active);
+    }
+
+    function getBalancedVideos(categoryFilter = null) {
+      const activeChannelIds = new Set(getActiveChannels().map(c => c.id));
+      let eligibleVideos = appState.videos.filter(v => activeChannelIds.has(v.channelId));
+
+      if (categoryFilter) {
+        eligibleVideos = eligibleVideos.filter(v => v.category === categoryFilter);
+      }
+
+      if (!appState.fairRotationEnabled) {
+        // Sem rotação justa: ordena pelos canais mais assistidos (comportamento tradicional)
+        return eligibleVideos.sort((a, b) => {
+          const chA = appState.channels.find(c => c.id === a.channelId);
+          const chB = appState.channels.find(c => c.id === b.channelId);
+          return (chB?.watchCount || 0) - (chA?.watchCount || 0);
+        });
+      }
+
+      // COM ROTAÇÃO EQUILIBRADA (Round-Robin por canal priorizando menos assistidos):
+      // Agrupa vídeos por canal
+      const byChannel = {};
+      eligibleVideos.forEach(video => {
+        if (!byChannel[video.channelId]) byChannel[video.channelId] = [];
+        byChannel[video.channelId].push(video);
+      });
+
+      // Ordena os canais do menos assistido para o mais assistido para dar vez aos novos!
+      const sortedChannelIds = Object.keys(byChannel).sort((idA, idB) => {
+        const chA = appState.channels.find(c => c.id === idA);
+        const chB = appState.channels.find(c => c.id === idB);
+        return (chA?.watchCount || 0) - (chB?.watchCount || 0);
+      });
+
+      // Intercala 1 vídeo de cada canal por rodada (Round-Robin)
+      const balancedList = [];
+      let added = true;
+      let round = 0;
+      while (added) {
+        added = false;
+        for (const chId of sortedChannelIds) {
+          if (byChannel[chId][round]) {
+            balancedList.push(byChannel[chId][round]);
+            added = true;
+          }
+        }
+        round++;
+      }
+
+      return balancedList;
+    }
+
+    // Garante exatamente 1 vídeo de destaque para CADA canal ativo na faixa "Novos e Recomendados"
+    function getDiscoveryVideosPerChannel() {
+      const activeChannels = getActiveChannels();
+      const picks = [];
+
+      // Ordena canais menos assistidos primeiro para incentivar descoberta
+      const orderedChannels = [...activeChannels].sort((a, b) => a.watchCount - b.watchCount);
+
+      orderedChannels.forEach(ch => {
+        const channelVideos = appState.videos.filter(v => v.channelId === ch.id);
+        if (channelVideos.length > 0) {
+          // Prefere vídeo marcado como novo, senão pega o primeiro do canal
+          const bestPick = channelVideos.find(v => v.isNew) || channelVideos[0];
+          picks.push({ video: bestPick, channel: ch });
+        }
+      });
+
+      return picks;
+    }
+
+    // -----------------------------------------------------------------------
+    // 6. RENDERIZAÇÃO DAS TELAS E COMPONENTES
+    // -----------------------------------------------------------------------
+    function renderCategoryBlocks() {
+      const grid = document.getElementById('category-blocks-grid');
+      const btnShowAll = document.getElementById('btn-show-all');
+
+      if (appState.selectedCategory) {
+        btnShowAll.classList.remove('hidden');
+      } else {
+        btnShowAll.classList.add('hidden');
+      }
+
+      grid.innerHTML = Object.values(CATEGORIES).map(cat => {
+        const isSelected = appState.selectedCategory === cat.id;
+        const isDimmed = appState.selectedCategory && !isSelected;
+
+        return `
+          <button onclick="selectCategory('${cat.id}')"
+                  class="btn-tactile relative overflow-hidden rounded-3xl p-4 sm:p-5 text-left text-white bg-gradient-to-br ${cat.gradient} border-b-4 ${cat.border} shadow-kid flex flex-col justify-between min-h-[138px] sm:min-h-[156px] transition-all ${isSelected ? 'ring-4 ring-slate-900 scale-[1.02]' : ''} ${isDimmed ? 'opacity-65 hover:opacity-100' : ''}">
+            <div class="flex items-start justify-between gap-2">
+              <div class="animate-float">${cat.svgArt}</div>
+              ${isSelected ? '<span class="bg-white text-slate-900 text-[11px] font-extrabold px-2.5 py-0.5 rounded-full shadow">Ativo ✓</span>' : ''}
+            </div>
+            <div class="mt-2">
+              <h3 class="font-kid text-lg sm:text-xl font-bold leading-tight drop-shadow-sm">${cat.title}</h3>
+              <p class="text-xs font-bold text-white/90 mt-0.5">${cat.subtitle}</p>
+            </div>
+          </button>
+        `;
+      }).join('');
+    }
+
+    function renderDiscoveryCarousel() {
+      const container = document.getElementById('discovery-carousel');
+      const items = getDiscoveryVideosPerChannel();
+
+      if (items.length === 0) {
+        container.innerHTML = `<p class="text-sm font-bold text-slate-400 py-3">Nenhum canal ativo no momento. Ative canais na aba Pais.</p>`;
+        return;
+      }
+
+      container.innerHTML = items.map(({ video, channel }) => {
+        const cat = CATEGORIES[video.category];
+        return `
+          <div onclick="openVideoPlayer('${video.id}')"
+               class="btn-tactile cursor-pointer shrink-0 w-56 sm:w-64 rounded-2xl bg-slate-50 border-2 border-slate-200 hover:border-sky-400 overflow-hidden shadow-sm flex flex-col">
+            <div class="relative h-28 bg-gradient-to-br ${video.bgGradient} flex items-center justify-center">
+              <span class="text-5xl drop-shadow">${video.emoji}</span>
+              <span class="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-white/90 text-slate-800 text-[10px] font-extrabold">
+                ${channel.watchCount === 0 ? '🆕 Novo Canal!' : cat.icon + ' ' + cat.title}
+              </span>
+              <div class="absolute inset-0 bg-black/10 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                <span class="w-10 h-10 rounded-full bg-white text-slate-900 flex items-center justify-center text-lg shadow-md">▶</span>
+              </div>
+            </div>
+            <div class="p-3 flex-1 flex flex-col justify-between">
+              <p class="font-kid font-bold text-sm text-slate-800 line-clamp-2 leading-snug">${video.title}</p>
+              <div class="flex items-center gap-1.5 mt-2 pt-1.5 border-t border-slate-200/70">
+                <span class="text-sm">${channel.avatar}</span>
+                <span class="text-xs font-extrabold text-slate-600 truncate">${channel.name}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function createVideoCardHTML(video) {
+      const channel = appState.channels.find(c => c.id === video.channelId) || { name: 'Canal Aprovado', avatar: '📺' };
+      const cat = CATEGORIES[video.category];
+      const isFav = appState.favorites.includes(video.id);
+
+      return `
+        <article class="bg-white rounded-3xl border-2 border-slate-200/90 overflow-hidden shadow-kid hover:border-sky-300 transition-all flex flex-col">
+          <!-- Thumbnail Ilustrada Clicável -->
+          <div onclick="openVideoPlayer('${video.id}')" class="relative aspect-video bg-gradient-to-br ${video.bgGradient} cursor-pointer group flex items-center justify-center overflow-hidden">
+            <!-- Detalhes decorativos -->
+            <div class="absolute -bottom-4 -left-4 w-24 h-24 rounded-full bg-white/10"></div>
+            <div class="absolute -top-4 -right-4 w-20 h-20 rounded-full bg-white/10"></div>
+
+            <span class="text-6xl sm:text-7xl drop-shadow-md group-hover:scale-110 transition-transform duration-300">${video.emoji}</span>
+
+            <!-- Tag da Categoria -->
+            <span class="absolute top-3 left-3 px-3 py-1 rounded-full ${cat.badgeBg} text-xs font-extrabold shadow-sm">
+              ${cat.icon} ${cat.title}
+            </span>
+
+            <!-- Duração -->
+            <span class="absolute bottom-3 right-3 px-2.5 py-0.5 rounded-lg bg-slate-900/75 text-white text-xs font-extrabold">
+              ${video.duration}
+            </span>
+
+            <!-- Botão Play Central -->
+            <div class="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-black/20 transition-colors">
+              <div class="w-14 h-14 rounded-full bg-white/95 text-sky-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform pl-1">
+                <svg class="w-7 h-7 fill-current" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- Informações do Vídeo e Canal -->
+          <div class="p-4 flex-1 flex flex-col justify-between gap-3">
+            <h3 onclick="openVideoPlayer('${video.id}')" class="cursor-pointer font-kid text-base sm:text-lg font-bold text-slate-800 hover:text-sky-600 leading-snug">
+              ${video.title}
+            </h3>
+
+            <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-base shrink-0">
+                  ${channel.avatar}
+                </span>
+                <span class="text-xs font-extrabold text-slate-600 truncate">${channel.name}</span>
+              </div>
+
+              <!-- Botão Favoritar Grande -->
+              <button onclick="toggleFavorite('${video.id}')" aria-label="Favoritar vídeo"
+                      class="btn-tactile w-11 h-11 rounded-2xl ${isFav ? 'bg-rose-100 border-2 border-rose-300 text-rose-600' : 'bg-slate-100 hover:bg-rose-50 text-slate-400'} flex items-center justify-center text-xl shrink-0 transition-colors">
+                ${isFav ? '❤️' : '🤍'}
+              </button>
+            </div>
+          </div>
+        </article>
+      `;
+    }
+
+    function renderMainFeed() {
+      const grid = document.getElementById('main-video-grid');
+      const titleEl = document.getElementById('feed-section-title');
+      const countBadge = document.getElementById('feed-count-badge');
+      const discoverySection = document.getElementById('discovery-strip-section');
+
+      const videos = getBalancedVideos(appState.selectedCategory);
+
+      if (appState.selectedCategory) {
+        const cat = CATEGORIES[appState.selectedCategory];
+        titleEl.innerHTML = `<span>${cat.icon} Vídeos de ${cat.title}</span>`;
+        discoverySection.classList.add('hidden');
+      } else {
+        titleEl.innerHTML = `<span>🎬 Todos os Vídeos Curados</span>`;
+        discoverySection.classList.remove('hidden');
+      }
+
+      countBadge.textContent = `${videos.length} ${videos.length === 1 ? 'vídeo' : 'vídeos'}`;
+
+      if (videos.length === 0) {
+        grid.innerHTML = `
+          <div class="col-span-full bg-white rounded-3xl p-8 text-center border-2 border-dashed border-slate-300">
+            <div class="text-5xl mb-2">📺</div>
+            <p class="font-kid text-xl font-bold text-slate-700">Nenhum vídeo disponível neste filtro</p>
+            <p class="text-sm font-semibold text-slate-500 mt-1">Peça para o papai ou a mamãe ativar canais nesta categoria.</p>
+          </div>
+        `;
+        return;
+      }
+
+      grid.innerHTML = videos.map(createVideoCardHTML).join('');
+    }
+
+    function renderChannelsView() {
+      const container = document.getElementById('channels-segmented-container');
+      const videosWrapper = document.getElementById('selected-channel-videos-wrapper');
+      const clearBtn = document.getElementById('btn-clear-channel-filter');
+
+      if (appState.selectedChannelId) {
+        const channel = appState.channels.find(c => c.id === appState.selectedChannelId);
+        container.classList.add('hidden');
+        videosWrapper.classList.remove('hidden');
+        clearBtn.classList.remove('hidden');
+
+        const chVideos = appState.videos.filter(v => v.channelId === appState.selectedChannelId);
+        document.getElementById('selected-channel-title').innerHTML = `${channel.avatar} Vídeos de ${channel.name}`;
+        document.getElementById('selected-channel-videos-grid').innerHTML = chVideos.map(createVideoCardHTML).join('');
+        return;
+      }
+
+      container.classList.remove('hidden');
+      videosWrapper.classList.add('hidden');
+      clearBtn.classList.add('hidden');
+
+      const activeChannels = getActiveChannels();
+
+      container.innerHTML = Object.values(CATEGORIES).map(cat => {
+        const catChannels = activeChannels.filter(ch => ch.category === cat.id);
+        return `
+          <div class="bg-white rounded-3xl p-4 sm:p-5 border-2 border-slate-200/80 shadow-sm">
+            <div class="flex items-center gap-2.5 mb-3.5">
+              <span class="w-9 h-9 rounded-xl bg-gradient-to-br ${cat.gradient} text-white flex items-center justify-center text-lg shadow-sm">
+                ${cat.icon}
+              </span>
+              <div>
+                <h3 class="font-kid text-lg font-bold text-slate-800 leading-none">${cat.title}</h3>
+                <p class="text-xs font-bold text-slate-400 mt-0.5">${catChannels.length} ${catChannels.length === 1 ? 'canal aprovado' : 'canais aprovados'}</p>
+              </div>
+            </div>
+
+            ${catChannels.length === 0 ? `
+              <p class="text-xs font-bold text-slate-400 italic py-2">Nenhum canal ativo neste bloco.</p>
+            ` : `
+              <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                ${catChannels.map(ch => {
+                  const vidCount = appState.videos.filter(v => v.channelId === ch.id).length;
+                  return `
+                    <button onclick="selectChannel('${ch.id}')"
+                            class="btn-tactile flex items-center gap-3 p-3.5 rounded-2xl bg-slate-50 hover:bg-sky-50 border-2 border-slate-200 hover:border-sky-400 text-left transition-colors">
+                      <span class="w-12 h-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-2xl shadow-sm shrink-0">
+                        ${ch.avatar}
+                      </span>
+                      <div class="min-w-0">
+                        <p class="font-kid font-bold text-base text-slate-800 truncate">${ch.name}</p>
+                        <p class="text-xs font-extrabold text-sky-600">${vidCount} ${vidCount === 1 ? 'vídeo' : 'vídeos'} →</p>
+                      </div>
+                    </button>
+                  `;
+                }).join('')}
+              </div>
+            `}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderFavoritesView() {
+      const grid = document.getElementById('favorites-grid');
+      const navBadge = document.getElementById('nav-fav-count');
+
+      const activeChannelIds = new Set(getActiveChannels().map(c => c.id));
+      const favVideos = appState.videos.filter(v => appState.favorites.includes(v.id) && activeChannelIds.has(v.channelId));
+
+      if (favVideos.length > 0) {
+        navBadge.textContent = favVideos.length;
+        navBadge.classList.remove('hidden');
+      } else {
+        navBadge.classList.add('hidden');
+      }
+
+      if (favVideos.length === 0) {
+        grid.innerHTML = `
+          <div class="col-span-full bg-white rounded-3xl p-8 text-center border-2 border-dashed border-rose-200">
+            <div class="text-5xl mb-2">🤍</div>
+            <p class="font-kid text-xl font-bold text-slate-700">Ainda não há vídeos favoritos</p>
+            <p class="text-sm font-semibold text-slate-500 mt-1">Toque no coração ❤️ em qualquer vídeo para guardar aqui!</p>
+            <button onclick="switchTab('inicio')" class="mt-4 btn-tactile px-5 py-2.5 rounded-2xl bg-sky-500 text-white font-kid font-bold text-sm shadow-kid">
+              Explorar Vídeos
+            </button>
+          </div>
+        `;
+        return;
+      }
+
+      grid.innerHTML = favVideos.map(createVideoCardHTML).join('');
+    }
+
+    function renderParentDashboard() {
+      const pinScreen = document.getElementById('parent-pin-screen');
+      const dashboard = document.getElementById('parent-dashboard');
+
+      if (!appState.parentUnlocked || appState.pinMode !== 'enter') {
+        if (!appState.parentPin && appState.pinMode === 'enter') appState.pinMode = 'create';
+        pinScreen.classList.remove('hidden');
+        dashboard.classList.add('hidden');
+        updatePinScreenText();
+        updatePinDots();
+        return;
+      }
+
+      pinScreen.classList.add('hidden');
+      dashboard.classList.remove('hidden');
+
+      // Atualiza visual do switch de Rotação Equilibrada
+      const toggleBtn = document.getElementById('toggle-fair-rotation');
+      if (appState.fairRotationEnabled) {
+        toggleBtn.className = 'w-16 h-9 rounded-full bg-emerald-500 p-1 transition-colors shrink-0 flex items-center justify-end cursor-pointer';
+      } else {
+        toggleBtn.className = 'w-16 h-9 rounded-full bg-slate-300 p-1 transition-colors shrink-0 flex items-center justify-start cursor-pointer';
+      }
+
+      // Resumo de equilíbrio entre os 4 pilares
+      const summaryEl = document.getElementById('pillars-balance-summary');
+      summaryEl.innerHTML = Object.values(CATEGORIES).map(cat => {
+        const count = appState.channels.filter(c => c.category === cat.id && c.active).length;
+        return `
+          <div class="rounded-2xl bg-slate-50 border border-slate-200 p-2.5 text-center">
+            <span class="text-lg">${cat.icon}</span>
+            <p class="text-xs font-extrabold text-slate-700 truncate">${cat.title}</p>
+            <p class="text-xs font-bold text-emerald-600">${count} ativos</p>
+          </div>
+        `;
+      }).join('');
+
+      // Lista de todos os canais cadastrados
+      document.getElementById('parent-channels-count').textContent = appState.channels.length;
+      const listEl = document.getElementById('parent-channels-list');
+
+      listEl.innerHTML = appState.channels.map(ch => {
+        const cat = CATEGORIES[ch.category];
+        return `
+          <div class="py-3.5 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+              <span class="w-11 h-11 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-2xl shrink-0">
+                ${ch.avatar}
+              </span>
+              <div class="min-w-0">
+                <p class="font-kid font-bold text-base text-slate-800 truncate ${!ch.active ? 'line-through text-slate-400' : ''}">
+                  ${ch.name}
+                </p>
+                <div class="flex flex-wrap items-center gap-1.5 mt-0.5">
+                  <span class="text-[11px] font-extrabold px-2 py-0.5 rounded-full ${cat.badgeBg}">
+                    ${cat.icon} ${cat.title}
+                  </span>
+                  <span class="text-[11px] font-bold text-slate-400">
+                    • Assistidos: ${ch.watchCount}x
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <button onclick="toggleChannelActive('${ch.id}')"
+                    class="btn-tactile px-3.5 py-2 rounded-xl font-kid font-bold text-xs shrink-0 ${ch.active ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-slate-200 text-slate-600'}">
+              ${ch.active ? '✓ Ativo' : 'Pausado'}
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function updateHeaderDiscoveryBadge() {
+      const badge = document.getElementById('discovery-badge');
+      const ping = document.getElementById('discovery-ping');
+      const dot = document.getElementById('discovery-dot');
+
+      if (appState.fairRotationEnabled) {
+        badge.className = 'cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border-2 border-emerald-200 text-emerald-700 text-xs font-extrabold shadow-sm hover:bg-emerald-100 transition-colors';
+        ping.classList.remove('hidden');
+        dot.className = 'relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500';
+      } else {
+        badge.className = 'cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 border-2 border-slate-200 text-slate-500 text-xs font-extrabold shadow-sm';
+        ping.classList.add('hidden');
+        dot.className = 'relative inline-flex rounded-full h-2.5 w-2.5 bg-slate-400';
+      }
+    }
+
+    function renderAll() {
+      updateHeaderDiscoveryBadge();
+      renderCategoryBlocks();
+      renderDiscoveryCarousel();
+      renderMainFeed();
+      renderChannelsView();
+      renderFavoritesView();
+      renderParentDashboard();
+    }
+
+    // -----------------------------------------------------------------------
+    // 7. NAVEGAÇÃO ENTRE ABAS E FILTROS
+    // -----------------------------------------------------------------------
+    function switchTab(tabName) {
+      playGentleChime('tap');
+      appState.activeTab = tabName;
+
+      // Atualiza visibilidade das seções
+      ['inicio', 'canais', 'favoritos', 'pais'].forEach(name => {
+        const el = document.getElementById(`view-${name}`);
+        if (name === tabName) {
+          el.classList.remove('hidden');
+        } else {
+          el.classList.add('hidden');
+        }
+      });
+
+      // Atualiza estilo dos botões da barra inferior
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        const isCurrent = btn.dataset.tab === tabName;
+        if (isCurrent) {
+          btn.classList.add('bg-sky-100', 'text-sky-700');
+          btn.classList.remove('text-slate-500', 'hover:bg-slate-100');
+        } else {
+          btn.classList.remove('bg-sky-100', 'text-sky-700');
+          btn.classList.add('text-slate-500', 'hover:bg-slate-100');
+        }
+      });
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      renderAll();
+    }
+
+    function selectCategory(categoryId) {
+      playGentleChime('tap');
+      if (appState.selectedCategory === categoryId) {
+        appState.selectedCategory = null;
+      } else {
+        appState.selectedCategory = categoryId;
+      }
+      renderCategoryBlocks();
+      renderMainFeed();
+    }
+
+    function clearCategoryFilter() {
+      playGentleChime('tap');
+      appState.selectedCategory = null;
+      renderCategoryBlocks();
+      renderMainFeed();
+    }
+
+    function selectChannel(channelId) {
+      playGentleChime('tap');
+      appState.selectedChannelId = channelId;
+      renderChannelsView();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function clearChannelFilter() {
+      playGentleChime('tap');
+      appState.selectedChannelId = null;
+      renderChannelsView();
+    }
+
+    function toggleFavorite(videoId) {
+      const idx = appState.favorites.indexOf(videoId);
+      if (idx === -1) {
+        appState.favorites.push(videoId);
+        playGentleChime('fav');
+        showToast('❤️ Adicionado aos Favoritos!', 'success');
+      } else {
+        appState.favorites.splice(idx, 1);
+        playGentleChime('tap');
+        showToast('Removido dos Favoritos', 'info');
+      }
+      saveState();
+      renderAll();
+      updatePlayerFavoriteButton();
+    }
+
+    // -----------------------------------------------------------------------
+    // 8. CONTROLE PARENTAL (PIN + GERENCIAMENTO DE CANAIS)
+    // -----------------------------------------------------------------------
+    function updatePinDots() {
+      const dots = document.querySelectorAll('#pin-dots .pin-dot');
+      dots.forEach((dot, index) => {
+        if (index < appState.pinBuffer.length) {
+          dot.classList.remove('bg-slate-100', 'border-slate-300');
+          dot.classList.add('bg-indigo-600', 'border-indigo-600', 'scale-110');
+        } else {
+          dot.classList.add('bg-slate-100', 'border-slate-300');
+          dot.classList.remove('bg-indigo-600', 'border-indigo-600', 'scale-110');
+        }
+      });
+    }
+
+    function updatePinScreenText() {
+      const title = document.getElementById('pin-title');
+      const subtitle = document.getElementById('pin-subtitle');
+      const texts = {
+        enter:   ['Área Exclusiva dos Pais', 'Digite a senha de 4 dígitos para gerenciar canais e regras.'],
+        create:  ['Crie o PIN dos Pais', 'Escolha 4 dígitos que só os adultos saibam.'],
+        confirm: ['Confirme o PIN', 'Digite os mesmos 4 dígitos mais uma vez.']
+      };
+      const [t, s] = texts[appState.pinMode] || texts.enter;
+      title.textContent = t;
+      subtitle.textContent = s;
+    }
+
+    function shakePinDots(message) {
+      const pinContainer = document.getElementById('pin-dots');
+      pinContainer.classList.add('animate-shake');
+      showToast(message, 'warn');
+      setTimeout(() => {
+        pinContainer.classList.remove('animate-shake');
+        appState.pinBuffer = '';
+        updatePinDots();
+      }, 400);
+    }
+
+    function startChangePin() {
+      playGentleChime('tap');
+      appState.pinMode = 'create';
+      appState.pinBuffer = '';
+      appState.pinDraft = '';
+      renderParentDashboard();
+    }
+
+    function handleFullPin() {
+      const typed = appState.pinBuffer;
+
+      if (appState.pinMode === 'create') {
+        appState.pinDraft = typed;
+        appState.pinBuffer = '';
+        appState.pinMode = 'confirm';
+        renderParentDashboard();
+        return;
+      }
+
+      if (appState.pinMode === 'confirm') {
+        if (typed !== appState.pinDraft) {
+          appState.pinMode = 'create';
+          appState.pinDraft = '';
+          updatePinScreenText();
+          shakePinDots('Os PINs não conferem. Vamos começar de novo.');
+          return;
+        }
+        appState.parentPin = typed;
+        appState.pinDraft = '';
+        appState.pinBuffer = '';
+        appState.pinMode = 'enter';
+        appState.parentUnlocked = true;
+        saveState();
+        playGentleChime('unlock');
+        showToast('🔑 PIN salvo! Guarde-o bem.', 'success');
+        renderParentDashboard();
+        return;
+      }
+
+      if (typed === appState.parentPin) {
+        appState.parentUnlocked = true;
+        appState.pinBuffer = '';
+        playGentleChime('unlock');
+        showToast('🔓 Painel dos Pais desbloqueado!', 'success');
+        renderParentDashboard();
+      } else {
+        shakePinDots('PIN incorreto.');
+      }
+    }
+
+    function enterPinDigit(digit) {
+      if (appState.pinBuffer.length >= 4) return;
+      playGentleChime('tap');
+      appState.pinBuffer += digit;
+      updatePinDots();
+
+      if (appState.pinBuffer.length === 4) {
+        setTimeout(handleFullPin, 150);
+      }
+    }
+
+    function backspacePin() {
+      playGentleChime('tap');
+      appState.pinBuffer = appState.pinBuffer.slice(0, -1);
+      updatePinDots();
+    }
+
+    function clearPin() {
+      playGentleChime('tap');
+      appState.pinBuffer = '';
+      updatePinDots();
+    }
+
+    function lockParentPanel() {
+      playGentleChime('tap');
+      appState.parentUnlocked = false;
+      appState.pinBuffer = '';
+      appState.pinDraft = '';
+      appState.pinMode = 'enter';
+      showToast('🔒 Painel bloqueado com segurança.', 'info');
+      renderParentDashboard();
+    }
+
+    function toggleFairRotation() {
+      appState.fairRotationEnabled = !appState.fairRotationEnabled;
+      playGentleChime('tap');
+      showToast(
+        appState.fairRotationEnabled
+          ? '⚖️ Rotação Equilibrada ativada! Todos os canais terão destaque.'
+          : '⚠️ Rotação Equilibrada desativada.',
+        appState.fairRotationEnabled ? 'success' : 'warn'
+      );
+      saveState();
+      renderAll();
+    }
+
+    function toggleChannelActive(channelId) {
+      const channel = appState.channels.find(c => c.id === channelId);
+      if (!channel) return;
+      channel.active = !channel.active;
+      playGentleChime('tap');
+      showToast(
+        channel.active ? `✅ Canal "${channel.name}" ativado!` : `⏸️ Canal "${channel.name}" pausado.`,
+        channel.active ? 'success' : 'info'
+      );
+      saveState();
+      renderAll();
+    }
+
+    function handleAddChannel(event) {
+      event.preventDefault();
+      const nameInput = document.getElementById('new-channel-name');
+      const categorySelect = document.getElementById('new-channel-category');
+
+      // Remove caracteres que poderiam quebrar o HTML e limita o tamanho
+      const name = nameInput.value.replace(/[<>&"'`\\]/g, '').trim().slice(0, 40);
+      const category = categorySelect.value;
+      if (!name) return;
+
+      const avatarsByCategory = {
+        entretenimento: ['🐻', '🦄', '🎪', '🐶'],
+        cristao: ['🕊️', '🐑', '🌈', '⛪'],
+        bilingue: ['🦉', '🔤', '🌎', '🐸'],
+        matematica: ['🧮', '🚀', '🔢', '🐙']
+      };
+
+      const pool = avatarsByCategory[category] || ['📺'];
+      const avatar = pool[Math.floor(Math.random() * pool.length)];
+      const newChannelId = 'ch-' + Date.now();
+
+      // Adiciona o novo canal com watchCount = 0 para entrar imediatamente no topo da rotação justa!
+      appState.channels.push({
+        id: newChannelId,
+        name,
+        category,
+        avatar,
+        active: true,
+        watchCount: 0
+      });
+
+      // Cria automaticamente 2 vídeos curados de demonstração para o novo canal aprovado
+      const catObj = CATEGORIES[category];
+      appState.videos.unshift(
+        {
+          id: 'vid-' + Date.now() + '-1',
+          channelId: newChannelId,
+          category,
+          title: `Bem-vindo ao ${name}: Episódio Especial!`,
+          duration: '3:10',
+          durationSec: 190,
+          emoji: avatar,
+          bgGradient: catObj.gradient,
+          isNew: true
+        },
+        {
+          id: 'vid-' + Date.now() + '-2',
+          channelId: newChannelId,
+          category,
+          title: `Aventura Educativa com ${name}`,
+          duration: '2:40',
+          durationSec: 160,
+          emoji: catObj.icon,
+          bgGradient: catObj.gradient,
+          isNew: true
+        }
+      );
+
+      nameInput.value = '';
+      saveState();
+      playGentleChime('unlock');
+      showToast(`🎉 Canal "${name}" aprovado e adicionado ao Modo Descoberta!`, 'success');
+      renderAll();
+    }
+
+    // -----------------------------------------------------------------------
+    // 9. PLAYER DE VÍDEO LIVRE DE DISTRAÇÕES
+    // -----------------------------------------------------------------------
+    function formatSeconds(sec) {
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return `${m}:${s < 10 ? '0' : ''}${s}`;
+    }
+
+    function openVideoPlayer(videoId) {
+      const video = appState.videos.find(v => v.id === videoId);
+      if (!video) return;
+
+      const channel = appState.channels.find(c => c.id === video.channelId);
+      if (channel) {
+        channel.watchCount += 1; // Registra visualização para equilibrar futuras recomendações
+        saveState();
+      }
+
+      playGentleChime('tap');
+      appState.player.currentVideoId = videoId;
+      appState.player.isPlaying = true;
+      appState.player.progressPercent = 0;
+
+      const cat = CATEGORIES[video.category];
+      document.getElementById('player-channel-avatar').textContent = channel ? channel.avatar : '📺';
+      document.getElementById('player-channel-name').textContent = channel ? channel.name : 'Canal Aprovado';
+      document.getElementById('player-video-title').textContent = video.title;
+      document.getElementById('player-category-pill').textContent = `${cat.icon} ${cat.title}`;
+
+      const stage = document.getElementById('player-stage');
+      stage.className = `playing-stage relative aspect-video w-full flex flex-col items-center justify-center p-6 text-center overflow-hidden bg-gradient-to-br ${video.bgGradient}`;
+      document.getElementById('player-stage-emoji').textContent = video.emoji;
+      document.getElementById('player-stage-subtitle').textContent = video.title;
+      document.getElementById('player-ended-overlay').classList.add('hidden');
+
+      document.getElementById('player-time-total').textContent = video.duration;
+      updatePlayerProgressUI();
+      updatePlayerPlayButtonUI();
+      updatePlayerFavoriteButton();
+
+      document.getElementById('video-player-modal').classList.remove('hidden');
+      startPlayerTimer();
+      renderAll(); // Atualiza contadores e rotação em segundo plano
+    }
+
+    function startPlayerTimer() {
+      clearInterval(appState.player.intervalId);
+      appState.player.intervalId = setInterval(() => {
+        if (!appState.player.isPlaying) return;
+
+        // Avança suavemente para demonstração interativa (~20s para completar o vídeo simulado)
+        appState.player.progressPercent += 1.25;
+        if (appState.player.progressPercent >= 100) {
+          appState.player.progressPercent = 100;
+          appState.player.isPlaying = false;
+          clearInterval(appState.player.intervalId);
+          document.getElementById('player-stage').classList.remove('playing-stage');
+          document.getElementById('player-ended-overlay').classList.remove('hidden');
+          updatePlayerPlayButtonUI();
+        }
+        updatePlayerProgressUI();
+      }, 250);
+    }
+
+    function updatePlayerProgressUI() {
+      const video = appState.videos.find(v => v.id === appState.player.currentVideoId);
+      const bar = document.getElementById('player-progress-bar');
+      bar.style.width = `${appState.player.progressPercent}%`;
+
+      if (video) {
+        const elapsed = (appState.player.progressPercent / 100) * video.durationSec;
+        document.getElementById('player-time-current').textContent = formatSeconds(elapsed);
+      }
+    }
+
+    function updatePlayerPlayButtonUI() {
+      const icon = document.getElementById('player-play-icon');
+      const label = document.getElementById('player-play-label');
+      const stage = document.getElementById('player-stage');
+
+      if (appState.player.isPlaying) {
+        icon.textContent = '⏸️';
+        label.textContent = 'Pausar';
+        stage.classList.add('playing-stage');
+      } else {
+        icon.textContent = '▶️';
+        label.textContent = 'Continuar';
+        stage.classList.remove('playing-stage');
+      }
+    }
+
+    function updatePlayerFavoriteButton() {
+      const vidId = appState.player.currentVideoId;
+      if (!vidId) return;
+      const isFav = appState.favorites.includes(vidId);
+      document.getElementById('player-fav-icon').textContent = isFav ? '❤️' : '🤍';
+    }
+
+    function togglePlayPause() {
+      playGentleChime('tap');
+      if (appState.player.progressPercent >= 100) {
+        replayCurrentVideo();
+        return;
+      }
+      appState.player.isPlaying = !appState.player.isPlaying;
+      updatePlayerPlayButtonUI();
+      // Religa o contador (ele é desligado quando o vídeo chega ao fim)
+      if (appState.player.isPlaying) startPlayerTimer();
+    }
+
+    function replayCurrentVideo() {
+      playGentleChime('tap');
+      appState.player.progressPercent = 0;
+      appState.player.isPlaying = true;
+      document.getElementById('player-ended-overlay').classList.add('hidden');
+      updatePlayerProgressUI();
+      updatePlayerPlayButtonUI();
+      startPlayerTimer();
+    }
+
+    function seekVideo(event) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      const clickX = event.clientX - rect.left;
+      const pct = Math.max(0, Math.min(100, (clickX / rect.width) * 100));
+      appState.player.progressPercent = pct;
+      document.getElementById('player-ended-overlay').classList.add('hidden');
+      updatePlayerProgressUI();
+    }
+
+    function toggleFavoriteCurrentVideo() {
+      if (appState.player.currentVideoId) {
+        toggleFavorite(appState.player.currentVideoId);
+      }
+    }
+
+    function closeVideoPlayer() {
+      playGentleChime('tap');
+      clearInterval(appState.player.intervalId);
+      appState.player.isPlaying = false;
+      appState.player.currentVideoId = null;
+      document.getElementById('video-player-modal').classList.add('hidden');
+    }
+
+    // Suporte a teclado físico no PIN (para testes no desktop)
+    document.addEventListener('keydown', (e) => {
+      if (appState.player.currentVideoId) {
+        if (e.key === 'Escape') closeVideoPlayer();
+        return;
+      }
+      const pinScreenVisible = !appState.parentUnlocked || appState.pinMode !== 'enter';
+      if (appState.activeTab === 'pais' && pinScreenVisible) {
+        if (e.key >= '0' && e.key <= '9') {
+          enterPinDigit(e.key);
+        } else if (e.key === 'Backspace') {
+          backspacePin();
+        }
+      }
+    });
+
+    // Inicializa a interface
+    window.addEventListener('DOMContentLoaded', () => {
+      loadState();
+      renderAll();
+    });
+
+    // Modo app: guarda os arquivos no aparelho para abrir rápido e sem internet
+    if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
