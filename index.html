@@ -417,6 +417,48 @@
           </form>
         </div>
 
+        <!-- Card: Aprovar Canal inteiro do YouTube -->
+        <div class="bg-white rounded-3xl p-5 border-2 border-indigo-200 shadow-sm">
+          <h3 class="font-kid text-lg font-bold text-slate-800 mb-1 flex items-center gap-2">
+            <span>📺</span> Aprovar Canal Inteiro
+          </h3>
+          <p class="text-xs sm:text-sm font-semibold text-slate-500 mb-1">
+            Libera os vídeos do canal (sem Shorts). Vídeos novos entram sozinhos, uma vez por dia.
+          </p>
+          <details class="mb-3">
+            <summary class="cursor-pointer text-xs font-extrabold text-indigo-700">Como pegar o ID do canal?</summary>
+            <ol class="mt-1.5 ml-4 list-decimal text-xs font-semibold text-slate-500 space-y-0.5">
+              <li>No computador, abra o canal no YouTube.</li>
+              <li>Clique na descrição do canal ("…mais") para abrir a janela <b>Sobre</b>.</li>
+              <li>Role até o fim → <b>Compartilhar canal</b> → <b>Copiar ID do canal</b>.</li>
+              <li>Cole aqui. Também serve um link no formato <b>youtube.com/channel/UC…</b></li>
+            </ol>
+          </details>
+          <form onsubmit="handleApproveChannel(event)" class="grid grid-cols-1 sm:grid-cols-12 gap-3">
+            <div class="sm:col-span-5">
+              <label class="block text-xs font-extrabold text-slate-600 mb-1">ID ou link do canal</label>
+              <input id="approve-channel-input" type="text" required autocomplete="off" placeholder="UC... ou youtube.com/channel/UC..."
+                     class="w-full px-4 py-3 rounded-2xl border-2 border-slate-200 focus:border-indigo-500 focus:outline-none font-bold text-sm text-slate-800">
+            </div>
+            <div class="sm:col-span-4">
+              <label class="block text-xs font-extrabold text-slate-600 mb-1">Bloco / Pilar</label>
+              <select id="approve-channel-category"
+                      class="w-full px-4 py-3 rounded-2xl border-2 border-slate-200 focus:border-indigo-500 focus:outline-none font-bold text-sm text-slate-800 bg-white">
+                <option value="entretenimento">🎨 Entretenimento</option>
+                <option value="cristao">✝️ Infantil Cristão</option>
+                <option value="bilingue">🔤 Português & Bilíngue</option>
+                <option value="matematica">🔢 Matemática</option>
+              </select>
+            </div>
+            <div class="sm:col-span-3 flex items-end">
+              <button id="btn-approve-channel" type="submit"
+                      class="w-full btn-tactile py-3 px-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-kid font-bold text-sm shadow-kid disabled:opacity-60">
+                Aprovar Canal
+              </button>
+            </div>
+          </form>
+        </div>
+
         <!-- Card: Segurança e dados -->
         <div class="bg-white rounded-3xl p-5 border-2 border-amber-200 shadow-sm space-y-3">
           <h3 class="font-kid text-lg font-bold text-slate-800 flex items-center gap-2">
@@ -1422,6 +1464,12 @@
                     • Assistidos: ${ch.watchCount}x
                   </span>
                 </div>
+                ${ch.ytChannelId ? `
+                <div class="flex flex-wrap items-center gap-1.5 mt-1">
+                  <span class="text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">📺 Canal inteiro</span>
+                  <span class="text-[11px] font-bold text-slate-400">${ch.lastSync ? 'atualizado ' + new Date(ch.lastSync).toLocaleDateString('pt-BR') : 'ainda não atualizado'}</span>
+                  <button onclick="refreshChannelNow('${ch.id}')" class="text-[11px] font-extrabold text-indigo-700 underline">🔄 Atualizar</button>
+                </div>` : ''}
               </div>
             </div>
 
@@ -1791,6 +1839,11 @@
       if (!video || !confirm(`Remover o vídeo "${video.title}"?`)) return;
       appState.videos = appState.videos.filter(v => v.id !== videoId);
       appState.favorites = appState.favorites.filter(id => id !== videoId);
+      // Em canal aprovado inteiro, lembra da remoção para o vídeo não voltar na próxima atualização
+      const channel = appState.channels.find(c => c.id === video.channelId);
+      if (channel && channel.ytChannelId && video.youtubeId) {
+        channel.removedIds = [...new Set([...(channel.removedIds || []), video.youtubeId])];
+      }
       saveState();
       showToast('Vídeo removido.', 'info');
       renderAll();
@@ -1818,10 +1871,233 @@
       appState.videos = appState.videos.filter(v => v.youtubeId);
       appState.favorites = appState.favorites.filter(id => !demoIds.has(id));
       const usedChannels = new Set(appState.videos.map(v => v.channelId));
-      appState.channels = appState.channels.filter(c => usedChannels.has(c.id) || c.ytChannelUrl);
+      appState.channels = appState.channels.filter(c => usedChannels.has(c.id) || c.ytChannelUrl || c.ytChannelId);
       saveState();
       showToast('Vídeos de exemplo removidos.', 'success');
       renderAll();
+    }
+
+    // -----------------------------------------------------------------------
+    // 8.1 CANAIS APROVADOS INTEIROS (sem chave de API)
+    //     A lista de vídeos vem do próprio player do YouTube: a playlist
+    //     "UULF + ID do canal" traz os vídeos normais do canal (sem Shorts),
+    //     até 200, do mais novo para o mais antigo.
+    // -----------------------------------------------------------------------
+    const SYNC_INTERVAL_MS = 20 * 60 * 60 * 1000; // ~1 vez por dia
+    let autoSyncRunning = false;
+
+    function parseChannelId(input) {
+      const m = String(input || '').match(/UC[A-Za-z0-9_-]{22}/);
+      return m ? m[0] : null;
+    }
+
+    // Abre um player escondido só para ler a lista de vídeos de uma playlist
+    async function listPlaylistIds(listId) {
+      await loadYouTubeApi();
+      const host = document.createElement('div');
+      host.setAttribute('aria-hidden', 'true');
+      host.style.cssText = 'position:fixed;left:-10000px;top:0;width:320px;height:180px;opacity:0;pointer-events:none';
+      const target = document.createElement('div');
+      host.appendChild(target);
+      document.body.appendChild(host);
+
+      let player = null;
+      try {
+        return await new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => resolve([]), 20000);
+          player = new YT.Player(target, {
+            host: 'https://www.youtube-nocookie.com',
+            playerVars: { listType: 'playlist', list: listId, autoplay: 0, controls: 0, mute: 1 },
+            events: {
+              onReady: (e) => {
+                let tries = 0;
+                const poll = setInterval(() => {
+                  const ids = e.target.getPlaylist();
+                  if ((ids && ids.length) || ++tries > 20) {
+                    clearInterval(poll);
+                    clearTimeout(timeout);
+                    resolve(ids ? [...ids] : []);
+                  }
+                }, 500);
+              },
+              onError: (e) => { clearTimeout(timeout); reject(new Error('yt-' + e.data)); }
+            }
+          });
+        });
+      } finally {
+        try { player && player.destroy(); } catch (e) {}
+        host.remove();
+      }
+    }
+
+    // Busca título de vários vídeos, 5 por vez
+    async function fetchInfosLimited(ids, onProgress) {
+      const results = new Map();
+      let done = 0;
+      let next = 0;
+      async function worker() {
+        while (next < ids.length) {
+          const id = ids[next++];
+          try {
+            results.set(id, await fetchYouTubeInfo(id));
+          } catch (err) {
+            // 'embed-blocked' / 'not-found' = vídeo não serve; erro de rede = tenta de novo depois
+            results.set(id, err.message === 'embed-blocked' || err.message === 'not-found' ? 'skip' : null);
+          }
+          done++;
+          if (onProgress) onProgress(done, ids.length);
+        }
+      }
+      await Promise.all(Array.from({ length: Math.min(5, ids.length) }, worker));
+      return results;
+    }
+
+    // Traz os vídeos do canal que ainda não estão no app. Devolve quantos entraram.
+    async function syncChannel(channel, onProgress, knownIds) {
+      const ids = knownIds || await listPlaylistIds('UULF' + channel.ytChannelId.slice(2));
+      const existing = new Set(appState.videos.map(v => v.youtubeId).filter(Boolean));
+      const skip = new Set([...(channel.removedIds || []), ...(channel.blockedIds || [])]);
+      const toAdd = ids.filter(id => !existing.has(id) && !skip.has(id));
+
+      const infos = await fetchInfosLimited(toAdd, onProgress);
+      const newVideos = [];
+      const blocked = [];
+      for (const id of toAdd) {
+        const info = infos.get(id);
+        if (info === 'skip') { blocked.push(id); continue; }
+        if (!info) continue;
+        newVideos.push({
+          id: 'yt-' + id,
+          youtubeId: id,
+          channelId: channel.id,
+          category: channel.category,
+          title: info.title,
+          duration: '',
+          durationSec: 0,
+          emoji: channel.avatar,
+          bgGradient: CATEGORIES[channel.category].gradient,
+          isNew: true,
+          addedAt: Date.now(),
+          fromChannelSync: true
+        });
+      }
+
+      // Mais novos primeiro
+      appState.videos.unshift(...newVideos);
+      if (blocked.length) channel.blockedIds = [...new Set([...(channel.blockedIds || []), ...blocked])];
+      channel.lastSync = Date.now();
+      saveState();
+      return newVideos.length;
+    }
+
+    async function handleApproveChannel(event) {
+      event.preventDefault();
+      const input = document.getElementById('approve-channel-input');
+      const category = document.getElementById('approve-channel-category').value;
+      const button = document.getElementById('btn-approve-channel');
+
+      const channelId = parseChannelId(input.value);
+      if (!channelId) {
+        const msg = input.value.includes('@')
+          ? 'Links com @nome não trazem o ID. Abra "Como pegar o ID do canal?" logo acima.'
+          : 'Não reconheci o ID. Ele começa com UC e tem 24 caracteres.';
+        showToast(msg, 'warn');
+        return;
+      }
+      if (appState.channels.some(c => c.ytChannelId === channelId)) {
+        showToast('Este canal já está aprovado. Use 🔄 Atualizar na lista de canais.', 'info');
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = 'Procurando canal...';
+      try {
+        let ids;
+        try {
+          ids = await listPlaylistIds('UULF' + channelId.slice(2));
+        } catch (err) {
+          showToast(err.message === 'timeout' || err.message === 'offline'
+            ? 'Sem internet no momento. Tente de novo.'
+            : 'Não encontrei esse canal. Confira o ID.', 'warn');
+          return;
+        }
+        if (!ids.length) {
+          showToast('Não encontrei vídeos neste canal (ele pode ter só Shorts).', 'warn');
+          return;
+        }
+
+        // Nome do canal vem do oEmbed de um dos vídeos
+        let info = null;
+        for (const id of ids.slice(0, 3)) {
+          try { info = await fetchYouTubeInfo(id); break; } catch (e) {}
+        }
+        const channelName = info ? info.channelName : 'Canal do YouTube';
+
+        // Se o canal já existia (aprovado por vídeo avulso), passa a ser canal inteiro
+        let channel = appState.channels.find(c =>
+          (info && info.channelUrl && c.ytChannelUrl === info.channelUrl) ||
+          c.name.toLowerCase() === channelName.toLowerCase()
+        );
+        if (!channel) {
+          const pool = AVATARS_BY_CATEGORY[category] || ['📺'];
+          channel = {
+            id: 'ch-' + Date.now(),
+            name: channelName,
+            category,
+            avatar: pool[Math.floor(Math.random() * pool.length)],
+            active: true,
+            watchCount: 0,
+            ytChannelUrl: info ? info.channelUrl : ''
+          };
+          appState.channels.push(channel);
+        }
+        channel.ytChannelId = channelId;
+
+        const added = await syncChannel(channel, (done, total) => {
+          button.textContent = `Buscando ${done}/${total}...`;
+        }, ids);
+
+        input.value = '';
+        playGentleChime('unlock');
+        showToast(`✅ Canal "${channel.name}" aprovado com ${added} ${added === 1 ? 'vídeo' : 'vídeos'}!`, 'success');
+        if (!channel.active) showToast('Atenção: este canal está pausado. Ative-o para a criança ver.', 'warn');
+        renderAll();
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Aprovar Canal';
+      }
+    }
+
+    async function refreshChannelNow(channelId) {
+      const channel = appState.channels.find(c => c.id === channelId);
+      if (!channel || !channel.ytChannelId) return;
+      showToast(`🔄 Buscando vídeos novos de "${channel.name}"...`, 'info');
+      try {
+        const added = await syncChannel(channel);
+        showToast(added ? `✨ ${added} ${added === 1 ? 'vídeo novo' : 'vídeos novos'} em "${channel.name}"!` : 'Nenhum vídeo novo por enquanto.', added ? 'success' : 'info');
+      } catch (e) {
+        showToast('Não deu para atualizar agora. Confira a internet.', 'warn');
+      }
+      renderAll();
+    }
+
+    async function autoSyncChannels() {
+      if (autoSyncRunning || !navigator.onLine) return;
+      const due = appState.channels.filter(c => c.ytChannelId && (!c.lastSync || Date.now() - c.lastSync > SYNC_INTERVAL_MS));
+      if (!due.length) return;
+      autoSyncRunning = true;
+      let total = 0;
+      try {
+        for (const channel of due) {
+          try { total += await syncChannel(channel); } catch (e) { /* tenta de novo na próxima abertura */ }
+        }
+      } finally {
+        autoSyncRunning = false;
+      }
+      if (total > 0) {
+        renderAll();
+        showToast(`✨ ${total} ${total === 1 ? 'vídeo novo chegou' : 'vídeos novos chegaram'}!`, 'success');
+      }
     }
 
     // -----------------------------------------------------------------------
@@ -2214,6 +2490,8 @@
     window.addEventListener('DOMContentLoaded', () => {
       loadState();
       renderAll();
+      // Busca vídeos novos dos canais aprovados (no máximo 1 vez por dia), sem travar a tela
+      setTimeout(autoSyncChannels, 3000);
     });
 
     // Modo app: guarda os arquivos no aparelho para abrir rápido e sem internet

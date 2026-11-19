@@ -1,7 +1,7 @@
 // Service worker do Kids TV Segura
 // Guarda os arquivos no aparelho para o app abrir sem internet.
 // Ao publicar uma nova versão, troque o número abaixo para o celular baixar a atualização.
-const CACHE = 'kidstv-v3';
+const CACHE = 'kidstv-v4';
 
 // Só estes endereços externos ficam guardados no aparelho.
 // YouTube (player, vídeos, miniaturas) sempre vai direto para a internet.

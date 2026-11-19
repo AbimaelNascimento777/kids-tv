@@ -38,8 +38,9 @@ Faça isso antes de entregar o celular para a criança.
 ## Como atualizar depois
 
 1. Altere os arquivos aqui na pasta.
-2. Em `sw.js`, aumente a versão: `const CACHE = 'kidstv-v1';` → `'kidstv-v2'`.
-   Sem isso o celular pode continuar mostrando a versão antiga.
+2. Em `sw.js`, aumente o número da versão (ex.: `'kidstv-v3'` → `'kidstv-v4'`).
+   Com internet o app já busca os arquivos novos, mas trocar o número garante que a cópia
+   guardada para uso sem internet também seja atualizada.
 3. No GitHub, **Add file → Upload files** com os arquivos alterados → **Commit changes**.
 4. No celular, feche e abra o app duas vezes para pegar a versão nova.
 
@@ -50,6 +51,18 @@ Faça isso antes de entregar o celular para a criança.
 3. Cole o link, escolha o pilar (só vale se o canal ainda não existir no app) → **Adicionar Vídeo**.
    O título e o nome do canal vêm sozinhos.
 4. Para tirar os vídeos que vieram de exemplo: **Segurança e Dados → Remover vídeos de exemplo**.
+
+## Como aprovar um canal inteiro
+
+1. No computador, abra o canal no YouTube e clique na descrição do canal ("…mais").
+2. Na janela **Sobre**, role até o fim → **Compartilhar canal** → **Copiar ID do canal** (começa com `UC`).
+3. No app, aba **Pais** → card **Aprovar Canal Inteiro** → cole o ID, escolha o pilar → **Aprovar Canal**.
+
+- Entram os vídeos normais do canal (até 200, os mais recentes), **sem Shorts**.
+- Vídeos novos do canal entram sozinhos, no máximo uma vez por dia, quando o app é aberto com internet.
+  Para buscar na hora, use **🔄 Atualizar** no canal.
+- Se você remover um vídeo de um canal aprovado, ele não volta nas próximas atualizações.
+- Links com `@nome` não funcionam aqui (não trazem o ID do canal).
 
 Cada canal na lista dos pais tem a opção de pausar, remover o canal inteiro ou remover vídeos um a um.
 
